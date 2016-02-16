@@ -1,0 +1,17 @@
+<?php
+/**
+ * @file
+ * Acro-Fraud main file.
+ */
+
+/**
+ * Implements hook_help().
+ */
+function acro_fraud_help($path) {
+  switch ($path) {
+    case 'admin/commerce/config/fraud':
+      return '<p>' . t('This will do stuff') . '</p>';
+  }
+}
+
+?>

@@ -1,0 +1,3 @@
+name = Acro-Fraud
+description = Detect potential fraudulant orders
+core = 7.x
