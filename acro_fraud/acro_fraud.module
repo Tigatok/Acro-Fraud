@@ -71,7 +71,7 @@ function acro_fraud_form($form, &$form_state){
       '#type' => 'tableselect',
       '#header' => $header,
       '#options' => $options,  // The array we made a bit earlier.
-      '#multiple' => FALSE,
+      '#multiple' => TRUE,
   );
   dpm($form['fraud_orders']);
 
