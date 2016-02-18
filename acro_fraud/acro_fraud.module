@@ -5,15 +5,26 @@
  */
 
 /**
- * Implements hook_help().
+ * Implements hook_menu()
  */
-function acro_fraud_help($path) {
-  switch ($path) {
-    case 'admin/commerce/config/fraud':
-      return '<p>' . t('This will do stuff') . '</p>';
-  }
+function acro_fraud_menu(){
+  $items = array();
+  $items['admin/commerce/config/fraud'] = array(
+      'title'=>'Acro Fraud module settings',
+      'page callback'=>'drupal_get_form',
+      'page arguments'=> array('acro_fraud_admin'),
+      'access arguments' => array('administer acro_fraud settings'),
+      'type'=>MENU_NORMAL_ITEM,
+  );
+  return $items;
 }
 
-function acro_fraud
+function acro_fraud_admin(){
+  $form = array();
+  $form['acro_fraud_test']= array(
+    '#type'=>'textfield'
+  );
+  return $form;
+}
 
 ?>

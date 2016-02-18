@@ -4,10 +4,6 @@
  * 
  */
 function fraud_schema() {
-
-  drupal_install_schema('fraud_table');
-}
-function fraud_schema() {
 $schema['fraud_table'] = array(
 	'fields' => array(
 	'order_id'            => array('type' => 'int', 'length' => 10, 'not null' => TRUE),
