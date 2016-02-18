@@ -12,17 +12,72 @@ function acro_fraud_menu(){
   $items['admin/commerce/config/fraud'] = array(
       'title'=>'Acro Fraud module settings',
       'page callback'=>'drupal_get_form',
-      'page arguments'=> array('acro_fraud_admin'),
+      'page arguments'=> array('acro_fraud_form'),
       'access arguments' => array('administer acro_fraud settings'),
+    'access callback' => TRUE,
       'type'=>MENU_NORMAL_ITEM,
   );
   return $items;
+}
+
+function acro_fraud_theme(){
+  return [
+    'acro_fraud_form'=> [
+      'render element' => 'form',
+    ],
+  ];
 }
 
 function acro_fraud_admin(){
   $form = array();
   $form['acro_fraud_test']= array(
     '#type'=>'textfield'
+  );
+  return $form;
+}
+
+function acro_fraud_form($form, &$form_state){
+  $views_name = 'commerce_backoffice_orders';
+  $display_id = 'page';
+
+  /*
+    To find your display_id go to the edit page of your view.
+    There will be a list of displays at the left side of the control area.
+    With out creating a view or block, "Master" will be at the top of that list.
+    Hover your cursor over the name of the display you want to use. and look at the URL.
+    The last word will be the display ID.
+  */
+
+  $orders = views_get_view_result($views_name , $display_id);
+
+  dpm($orders);  // it help you to navigate through $customers
+
+  $options = array();
+
+  // Create an options array for the checkbox from the customer nodes. Your field
+  // names will differ, look them up  via the dpm() call above. You need devel.module
+  // for that.
+  foreach($orders as $order) {
+    $options[$order->order_id] = array(
+      'order_id'=> $order->order_id,
+    );
+  }
+  $header = array
+  (
+      'order_id' => 'Order ID',
+  );
+
+  $form['fraud_orders'] = array(
+      '#type' => 'tableselect',
+      '#header' => $header,
+      '#options' => $options,  // The array we made a bit earlier.
+      '#multiple' => FALSE,
+  );
+  dpm($form['fraud_orders']);
+
+  $form['submit'] = array(
+    '#type' => 'submit',
+      '#value'=>'Mark as Fraud',
   );
   return $form;
 }
