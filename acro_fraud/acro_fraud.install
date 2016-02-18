@@ -6,8 +6,8 @@ function acro_fraud_schema() {
 $schema['fraud_table'] = array(
 	'fields' => array(
 	  'order_id'=> array('type' => 'int', 'length' => 10, 'not null' => TRUE),
-    'fscore' => array('type' => 'int', 'length' => 10, 'not null' => TRUE)
-  ),
+      'fscore' => array('type' => 'int', 'length' => 10, 'not null' => TRUE),
+    ),
   'primary key' => array('order_id'),
   );
 return $schema;
