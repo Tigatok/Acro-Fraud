@@ -3,7 +3,8 @@
  * Implements hook_schema
  */
 function acro_fraud_schema() {
-  $schema['order_risk_assessment'] = array(
+  $schema['commerce_order_risk'] = array(
+    'description' => 'The table containing risk information',
 	  'fields' => array(
 	    'order_id'=> array('type' => 'int', 'length' => 10, 'not null' => TRUE),
       'risk_score' => array('type' => 'int', 'length' => 10, 'not null' => TRUE),
@@ -18,6 +19,6 @@ function acro_fraud_schema() {
 //    ),
 //    ''
 //  );
-return $schema;
+  return $schema;
 }
 ?>
