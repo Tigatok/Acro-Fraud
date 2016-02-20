@@ -1,3 +1,8 @@
 name = Acro-Fraud
 description = Detect potential fraudulent orders
 core = 7.x
+package = Commerce (contrib)
+
+dependencies[] = commerce_order
+dependencies[] = commerce_order_ui
+dependencies[] = commerce_payment
