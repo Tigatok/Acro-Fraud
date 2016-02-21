@@ -81,5 +81,18 @@ function acro_fraud_form($form, &$form_state){
   );
   return $form;
 }
+function acro_fraud_form_submit($form, &$form_state){
+  dpm($form_state, "Form");
+    $record = [
+        'order_id'=> $form_state['order_id']
+    ];
+    $insert = db_insert('fraud_table')
+        -> fields(array (
+            'order_id' => $record['order_id'],
+            'fscore' => 10
+        ))
+        ->execute();
+    drupal_set_message(t('You have marked the order as fraudulent'));
+}
 
 ?>
