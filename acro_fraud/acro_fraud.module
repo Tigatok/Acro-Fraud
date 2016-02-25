@@ -122,6 +122,23 @@ function acro_fraud_views_api() {
 }
 
 /**
+ * Implements hook_views_query_alter()
+ */
+function hook_views_query_alter($view, $query){
+
+  if ($view->name == "order_risk "){
+
+    $ro_join = new views_join();
+    $ro_join->table = 'risk_order';
+    $ro_join->field = 'order_id';
+    $ro_join->left_table = 'commerce_order';
+    $ro_join->left_field = 'order_id:';
+    $ro_join->type = 'inner';
+    $query->add_relationship('risk_order', $ro_join, 'commerce_order');
+  }
+}
+
+/**
  * Implements hook_views_default_views().
  * @todo add fields - risk score & rating
  */
@@ -232,6 +249,10 @@ function acro_fraud_views_default_views() {
   $handler->display->display_options['relationships']['uid']['id'] = 'uid';
   $handler->display->display_options['relationships']['uid']['table'] = 'commerce_order';
   $handler->display->display_options['relationships']['uid']['field'] = 'uid';
+  /* Relationship: Risk Score: Orders */
+//  $handler->display->display_options['relationships']['risk_order']['id'] = 'risk_order';
+//  $handler->display->display_options['relationships']['risk_order']['table'] = 'commerce_order';
+//  $handler->display->display_options['relationships']['risk_order']['field'] = 'order_id';
   /* Field: Bulk operations: Commerce Order */
   $handler->display->display_options['fields']['views_bulk_operations']['id'] = 'views_bulk_operations';
   $handler->display->display_options['fields']['views_bulk_operations']['table'] = 'commerce_order';
@@ -315,6 +336,7 @@ function acro_fraud_views_default_views() {
       'label' => '',
     ),
   );
+
   /* Field: Commerce Order: Order number */
   $handler->display->display_options['fields']['order_number']['id'] = 'order_number';
   $handler->display->display_options['fields']['order_number']['table'] = 'commerce_order';
@@ -348,6 +370,20 @@ function acro_fraud_views_default_views() {
   $handler->display->display_options['fields']['status']['table'] = 'commerce_order';
   $handler->display->display_options['fields']['status']['field'] = 'status';
   $handler->display->display_options['fields']['status']['label'] = 'Status';
+  /* Field: Commerce Order: Risk Score */
+//  $handler->display->display_options['fields']['risk_score']['id'] = 'risk_score';
+//  $handler->display->display_options['fields']['risk_score']['table'] = 'commerce_order_risk';
+//  $handler->display->display_options['fields']['risk_score']['field'] = 'risk_score';
+//  $handler->display->display_options['fields']['risk_score']['relationship'] = 'risk_order';
+//  $handler->display->display_options['fields']['risk_score']['label'] = 'Risk Score';
+  /* Field: Global: Math expression */
+  $handler->display->display_options['fields']['expression']['id'] = 'expression';
+  $handler->display->display_options['fields']['expression']['table'] = 'views';
+  $handler->display->display_options['fields']['expression']['field'] = 'expression';
+  $handler->display->display_options['fields']['expression']['label'] = 'Risk Score';
+  $handler->display->display_options['fields']['expression']['element_label_colon'] = FALSE;
+  $handler->display->display_options['fields']['expression']['precision'] = '0';
+  $handler->display->display_options['fields']['expression']['expression'] = '5+5';
   /* Sort criterion: Commerce Order: Updated date */
   $handler->display->display_options['sorts']['changed']['id'] = 'changed';
   $handler->display->display_options['sorts']['changed']['table'] = 'commerce_order';
@@ -406,11 +442,11 @@ function acro_fraud_views_default_views() {
   $handler->display->display_options['defaults']['hide_admin_links'] = FALSE;
   $handler->display->display_options['path'] = 'admin/commerce/orders/risk';
   $handler->display->display_options['menu']['type'] = 'default tab';
-  $handler->display->display_options['menu']['title'] = 'Orders';
+  $handler->display->display_options['menu']['title'] = 'Order Risk';
   $handler->display->display_options['menu']['weight'] = '-10';
   $handler->display->display_options['tab_options']['type'] = 'normal';
-  $handler->display->display_options['tab_options']['title'] = 'Orders';
-  $handler->display->display_options['tab_options']['description'] = 'Manage orders in the store.';
+  $handler->display->display_options['tab_options']['title'] = 'Order Risk';
+  $handler->display->display_options['tab_options']['description'] = 'View the risk of orders in the store.';
   $handler->display->display_options['tab_options']['weight'] = '';
   $handler->display->display_options['tab_options']['name'] = 'management';
 
