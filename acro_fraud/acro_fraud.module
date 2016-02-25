@@ -50,21 +50,30 @@ function acro_fraud_form($form, &$form_state){
 
   $orders = views_get_view_result($views_name , $display_id);
 
-  dpm($orders);  // it help you to navigate through $customers
-
   $options = array();
 
   // Create an options array for the checkbox from the customer nodes. Your field
   // names will differ, look them up  via the dpm() call above. You need devel.module
   // for that.
   foreach($orders as $order) {
+    $result = db_select('fraud_table', 'ft')
+    ->fields('ft')
+    ->condition('order_id', $order->order_id, '=')
+    ->execute()
+    ->fetchAssoc();
+    $fraud_score=$result['fscore'];
+    if($fraud_score == ''){
+      $fraud_score =0;
+    }
     $options[$order->order_id] = array(
       'order_id'=> $order->order_id,
+        'fraud_score'=>$fraud_score,
     );
   }
   $header = array
   (
       'order_id' => 'Order ID',
+      'fraud_score'=>'Fraud Score',
   );
 
   $form['fraud_orders'] = array(
@@ -73,13 +82,33 @@ function acro_fraud_form($form, &$form_state){
       '#options' => $options,  // The array we made a bit earlier.
       '#multiple' => TRUE,
   );
-  dpm($form['fraud_orders']);
 
   $form['submit'] = array(
     '#type' => 'submit',
-      '#value'=>'Mark as Fraud',
+    '#value'=>'Mark as Fraud',
+    '#submit'=>array('acro_fraud_submit'),
   );
   return $form;
+}
+
+/**
+ * Implements hook_submit().
+ */
+function acro_fraud_submit($form, &$form_state){
+  if(isset($form_state['values']['fraud_orders'])){
+    foreach($form_state['values']['fraud_orders'] as $key => $value){
+      if($value !== 0){
+        //Insert into DB here.
+        $record = [
+          'order_id'=>$key,
+          'fscore'=>10,
+        ];
+        drupal_write_record('fraud_table', $record);
+        $return = $record['fscore'];
+        dpm($return, "Insertted Row into table Fraud_Table. Fraud Score: ");
+      }
+    }
+  }
 }
 
 /**
