@@ -3,12 +3,14 @@
  * Implements hook_schema
  */
 function acro_fraud_schema() {
-$schema['fraud_table'] = array(
-	'fields' => array(
-	  'order_id'=> array('type' => 'int', 'length' => 10, 'not null' => TRUE),
-      'fscore' => array('type' => 'int', 'length' => 10, 'not null' => TRUE),
+  $schema['commerce_order_risk'] = array(
+    'description' => 'The table containing risk information',
+	  'fields' => array(
+	    'order_id'=> array('type' => 'int', 'length' => 10, 'not null' => TRUE),
+      'risk_score' => array('type' => 'int', 'length' => 10, 'not null' => TRUE),
+      'reason' => array('type' => 'varchar', 'length' => 100, 'not null' => FALSE),
     ),
-  'primary key' => array('order_id'),
+    'primary key' => array('order_id'),
   );
 return $schema;
 }
