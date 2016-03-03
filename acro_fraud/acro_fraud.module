@@ -103,7 +103,7 @@ function acro_fraud_submit($form, &$form_state){
           'order_id'=>$key,
           'risk_score'=>10,
         ];
-        drupal_write_record('commerce_order_risk', $record);
+        drupal_write_record('commerce_order_risk', $record, ['order_id']);
         drupal_set_message('Risk Score Updated.','status');
       }
     }
