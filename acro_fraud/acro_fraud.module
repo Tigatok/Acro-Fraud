@@ -104,8 +104,7 @@ function acro_fraud_submit($form, &$form_state){
           'risk_score'=>10,
         ];
         drupal_write_record('commerce_order_risk', $record);
-        $return = $record['risk_score'];
-        dpm($return, "Insertted Row into table Fraud_Table. Fraud Score: ");
+        drupal_set_message('Risk Score Updated.','status');
       }
     }
   }
