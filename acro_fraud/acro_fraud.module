@@ -121,23 +121,6 @@ function acro_fraud_views_api() {
   );
 }
 
-///**
-// * Implements hook_views_query_alter()
-// */
-//function acro_fraud_views_query_alter($view, $query){
-//
-//  if ($view->name == "order_risk "){
-//
-//    $ro_join = new views_join();
-//    $ro_join->table = 'commerce_order_risk';
-//    $ro_join->field = 'order_id';
-//    $ro_join->left_table = 'commerce_order';
-//    $ro_join->left_field = 'order_id:';
-//    $ro_join->type = 'inner';
-//    $query->add_relationship('risk_order', $ro_join, 'commerce_order');
-//  }
-//}
-
 /**
  * Implements hook_views_default_views().
  * @todo add fields - risk score & rating
