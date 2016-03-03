@@ -232,10 +232,11 @@ function acro_fraud_views_default_views() {
   $handler->display->display_options['relationships']['uid']['id'] = 'uid';
   $handler->display->display_options['relationships']['uid']['table'] = 'commerce_order';
   $handler->display->display_options['relationships']['uid']['field'] = 'uid';
-  /* Relationship: Risk Score: Orders */
-  $handler->display->display_options['relationships']['risk_order']['id'] = 'risk_order';
-  $handler->display->display_options['relationships']['risk_order']['table'] = 'commerce_order';
-  $handler->display->display_options['relationships']['risk_order']['field'] = 'order_id';
+  /* Relationship: Order Risk: Link orders to risk */
+  $handler->display->display_options['relationships']['order_id']['id'] = 'order_id';
+  $handler->display->display_options['relationships']['order_id']['table'] = 'commerce_order_risk';
+  $handler->display->display_options['relationships']['order_id']['field'] = 'order_id';
+  $handler->display->display_options['relationships']['order_id']['label'] = 'Default label for the relationship';
   /* Field: Bulk operations: Commerce Order */
   $handler->display->display_options['fields']['views_bulk_operations']['id'] = 'views_bulk_operations';
   $handler->display->display_options['fields']['views_bulk_operations']['table'] = 'commerce_order';
@@ -319,7 +320,6 @@ function acro_fraud_views_default_views() {
       'label' => '',
     ),
   );
-
   /* Field: Commerce Order: Order number */
   $handler->display->display_options['fields']['order_number']['id'] = 'order_number';
   $handler->display->display_options['fields']['order_number']['table'] = 'commerce_order';
@@ -353,20 +353,14 @@ function acro_fraud_views_default_views() {
   $handler->display->display_options['fields']['status']['table'] = 'commerce_order';
   $handler->display->display_options['fields']['status']['field'] = 'status';
   $handler->display->display_options['fields']['status']['label'] = 'Status';
-  /* Field: Commerce Order: Risk Score */
+  /* Field: Order Risk: Risk Score */
   $handler->display->display_options['fields']['risk_score']['id'] = 'risk_score';
   $handler->display->display_options['fields']['risk_score']['table'] = 'commerce_order_risk';
   $handler->display->display_options['fields']['risk_score']['field'] = 'risk_score';
-  $handler->display->display_options['fields']['risk_score']['relationship'] = 'risk_order';
-  $handler->display->display_options['fields']['risk_score']['label'] = 'Risk Score';
-  /* Field: Global: Math expression */
-//  $handler->display->display_options['fields']['expression']['id'] = 'expression';
-//  $handler->display->display_options['fields']['expression']['table'] = 'views';
-//  $handler->display->display_options['fields']['expression']['field'] = 'expression';
-//  $handler->display->display_options['fields']['expression']['label'] = 'Risk Score';
-//  $handler->display->display_options['fields']['expression']['element_label_colon'] = FALSE;
-//  $handler->display->display_options['fields']['expression']['precision'] = '0';
-//  $handler->display->display_options['fields']['expression']['expression'] = '5-5';
+  /* Field: Order Risk: Reason */
+  $handler->display->display_options['fields']['reason']['id'] = 'reason';
+  $handler->display->display_options['fields']['reason']['table'] = 'commerce_order_risk';
+  $handler->display->display_options['fields']['reason']['field'] = 'reason';
   /* Sort criterion: Commerce Order: Updated date */
   $handler->display->display_options['sorts']['changed']['id'] = 'changed';
   $handler->display->display_options['sorts']['changed']['table'] = 'commerce_order';
@@ -423,7 +417,7 @@ function acro_fraud_views_default_views() {
   /* Display: Admin page */
   $handler = $view->new_display('page', 'Admin page', 'admin_page');
   $handler->display->display_options['defaults']['hide_admin_links'] = FALSE;
-  $handler->display->display_options['path'] = 'admin/commerce/orders/risk';
+  $handler->display->display_options['path'] = 'admin/commerce/order-risk';
   $handler->display->display_options['menu']['type'] = 'default tab';
   $handler->display->display_options['menu']['title'] = 'Order Risk';
   $handler->display->display_options['menu']['weight'] = '-10';
@@ -441,22 +435,17 @@ function acro_fraud_views_default_views() {
  * Implements hook_views_data()
  */
 function acro_fraud_views_data(){
-  $data['commerce_order_risk']['table']['group'] = t('Order Risk Table');
+  $data['commerce_order_risk']['table']['group'] = t('Order Risk');
 
-  // Define this as a base table – a table that can be described in itself by
-  // views (and not just being brought in as a relationship). In reality this
-  // is not very useful for this table, as it isn't really a distinct object of
-  // its own, but it makes a good example.
+  // Define the base table
   $data['commerce_order_risk']['table']['base'] = array(
     'field' => 'order_id', // This is the identifier field for the view.
-    'title' => t('Order Risk table'),
-    'help' => t('Example table contains example content and can be related to nodes.'),
+    'title' => t('Order Risk'),
+    'help' => t('Contains information about an orders risk.'),
     'weight' => -10,
   );
 
-  // This table references the {node} table. The declaration below creates an
-  // 'implicit' relationship to the node table, so that when 'node' is the base
-  // table, the fields are automatically available.
+  // Join on commerce_order
   $data['commerce_order_risk']['table']['join'] = array(
     // Index this array by the table name to which this table refers.
     // 'left_field' is the primary key in the referenced table.
@@ -468,29 +457,24 @@ function acro_fraud_views_data(){
   );
 
 
-  // Node ID table field.
+  // Order ID table field.
   $data['commerce_order_risk']['order_id'] = array(
-    'title' => t('Example content'),
-    'help' => t('Some example content that references a node.'),
-    // Define a relationship to the {node} table, so example_table views can
-    // add a relationship to nodes. If you want to define a relationship the
-    // other direction, use hook_views_data_alter(), or use the 'implicit' join
-    // method described above.
+    'title' => t('Order ID'),
+    'help' => t('The ID of an Order'),
+    // Define a relationship
     'relationship' => array(
       'base' => 'commerce_order', // The name of the table to join with.
       'base field' => 'order_id', // The name of the field on the joined table.
-      // 'field' => 'nid' -- see hook_views_data_alter(); not needed here.
       'handler' => 'views_handler_relationship',
-      'label' => t('Default label for the relationship'),
-      'title' => t('Title shown when adding the relationship'),
-      'help' => t('More information on this relationship'),
+      'label' => t('Order risk'),
+      'title' => t('Link orders to risk'),
+      'help' => t('Links the orders to their risk'),
     ),
   );
 
-  // Example plain text field.
   $data['commerce_order_risk']['reason'] = array(
     'title' => t('Reason'),
-    'help' => t('Just a plain text field.'),
+    'help' => t('The reason that determines the risk score'),
     'field' => array(
       'handler' => 'views_handler_field',
       'click sortable' => TRUE, // This is use by the table display plugin.
@@ -506,10 +490,9 @@ function acro_fraud_views_data(){
     ),
   );
 
-  // Example numeric text field.
   $data['commerce_order_risk']['risk_score'] = array(
-    'title' => t('Numeric field'),
-    'help' => t('Just a numeric field.'),
+    'title' => t('Risk Score'),
+    'help' => t('The risk associated with the order.'),
     'field' => array(
       'handler' => 'views_handler_field_numeric',
       'click sortable' => TRUE,
