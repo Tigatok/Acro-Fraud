@@ -124,12 +124,12 @@ function acro_fraud_views_api() {
 /**
  * Implements hook_views_query_alter()
  */
-function hook_views_query_alter($view, $query){
+function acro_fraud_views_query_alter($view, $query){
 
   if ($view->name == "order_risk "){
 
     $ro_join = new views_join();
-    $ro_join->table = 'risk_order';
+    $ro_join->table = 'commerce_order_risk';
     $ro_join->field = 'order_id';
     $ro_join->left_table = 'commerce_order';
     $ro_join->left_field = 'order_id:';
@@ -250,9 +250,9 @@ function acro_fraud_views_default_views() {
   $handler->display->display_options['relationships']['uid']['table'] = 'commerce_order';
   $handler->display->display_options['relationships']['uid']['field'] = 'uid';
   /* Relationship: Risk Score: Orders */
-//  $handler->display->display_options['relationships']['risk_order']['id'] = 'risk_order';
-//  $handler->display->display_options['relationships']['risk_order']['table'] = 'commerce_order';
-//  $handler->display->display_options['relationships']['risk_order']['field'] = 'order_id';
+  $handler->display->display_options['relationships']['risk_order']['id'] = 'risk_order';
+  $handler->display->display_options['relationships']['risk_order']['table'] = 'commerce_order';
+  $handler->display->display_options['relationships']['risk_order']['field'] = 'order_id';
   /* Field: Bulk operations: Commerce Order */
   $handler->display->display_options['fields']['views_bulk_operations']['id'] = 'views_bulk_operations';
   $handler->display->display_options['fields']['views_bulk_operations']['table'] = 'commerce_order';
@@ -371,19 +371,19 @@ function acro_fraud_views_default_views() {
   $handler->display->display_options['fields']['status']['field'] = 'status';
   $handler->display->display_options['fields']['status']['label'] = 'Status';
   /* Field: Commerce Order: Risk Score */
-//  $handler->display->display_options['fields']['risk_score']['id'] = 'risk_score';
-//  $handler->display->display_options['fields']['risk_score']['table'] = 'commerce_order_risk';
-//  $handler->display->display_options['fields']['risk_score']['field'] = 'risk_score';
-//  $handler->display->display_options['fields']['risk_score']['relationship'] = 'risk_order';
-//  $handler->display->display_options['fields']['risk_score']['label'] = 'Risk Score';
+  $handler->display->display_options['fields']['risk_score']['id'] = 'risk_score';
+  $handler->display->display_options['fields']['risk_score']['table'] = 'commerce_order_risk';
+  $handler->display->display_options['fields']['risk_score']['field'] = 'risk_score';
+  $handler->display->display_options['fields']['risk_score']['relationship'] = 'risk_order';
+  $handler->display->display_options['fields']['risk_score']['label'] = 'Risk Score';
   /* Field: Global: Math expression */
-  $handler->display->display_options['fields']['expression']['id'] = 'expression';
-  $handler->display->display_options['fields']['expression']['table'] = 'views';
-  $handler->display->display_options['fields']['expression']['field'] = 'expression';
-  $handler->display->display_options['fields']['expression']['label'] = 'Risk Score';
-  $handler->display->display_options['fields']['expression']['element_label_colon'] = FALSE;
-  $handler->display->display_options['fields']['expression']['precision'] = '0';
-  $handler->display->display_options['fields']['expression']['expression'] = '5-5';
+//  $handler->display->display_options['fields']['expression']['id'] = 'expression';
+//  $handler->display->display_options['fields']['expression']['table'] = 'views';
+//  $handler->display->display_options['fields']['expression']['field'] = 'expression';
+//  $handler->display->display_options['fields']['expression']['label'] = 'Risk Score';
+//  $handler->display->display_options['fields']['expression']['element_label_colon'] = FALSE;
+//  $handler->display->display_options['fields']['expression']['precision'] = '0';
+//  $handler->display->display_options['fields']['expression']['expression'] = '5-5';
   /* Sort criterion: Commerce Order: Updated date */
   $handler->display->display_options['sorts']['changed']['id'] = 'changed';
   $handler->display->display_options['sorts']['changed']['table'] = 'commerce_order';
