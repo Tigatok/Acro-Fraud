@@ -123,7 +123,6 @@ function acro_fraud_views_api() {
 
 /**
  * Implements hook_views_default_views().
- * @todo add fields - risk score & rating
  */
 function acro_fraud_views_default_views() {
 
@@ -506,5 +505,20 @@ function acro_fraud_views_data(){
   );
 
   return $data;
+}
+
+/**
+ * Implements hook_order_status_info()
+ */
+function acro_fraud_order_status_info(){
+  $order_statuses = array();
+
+  $order_statuses['fraudulent'] = array(
+    'name' => 'fraudulent',
+    'title' => t('Fraudulent (Canceled)'),
+    'state' => 'canceled',
+  );
+
+  return $order_statuses;
 }
 ?>
