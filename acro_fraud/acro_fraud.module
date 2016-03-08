@@ -510,13 +510,18 @@ function acro_fraud_views_data(){
 /**
  * Implements hook_order_status_info()
  */
-function acro_fraud_order_status_info(){
+function acro_fraud_commerce_order_status_info(){
   $order_statuses = array();
 
   $order_statuses['fraudulent'] = array(
     'name' => 'fraudulent',
     'title' => t('Fraudulent (Canceled)'),
     'state' => 'canceled',
+  );
+  $order_statuses['high_risk'] = array(
+    'name' => 'high_risk',
+    'title' => t('High Risk (Pending)'),
+    'state' => 'pending'
   );
 
   return $order_statuses;
