@@ -12,6 +12,12 @@ function acro_fraud_schema() {
     ),
     'primary key' => array('order_id'),
   );
+  $schema['commerce_order_fraud'] = array(
+    'description' => 'The table containing orders marked as fraudulent',
+    'fields' => array(
+      'order_id' => array('type' => 'int', 'length' => 10, 'not null' => TRUE),
+    ),
+  );
 return $schema;
 }
 ?>
