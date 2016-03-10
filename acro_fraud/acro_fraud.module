@@ -525,4 +525,21 @@ function acro_fraud_commerce_order_status_info(){
 
   return $order_statuses;
 }
+
+/**
+ * Implements hook_commerce_order_presave().
+ */
+function acro_fraud_commerce_order_presave($order) {
+  drupal_set_message("Chicken");
+  if ($order->status == $order->original->status) {} //If the status hasn't changed do nothing
+  else if ($order->status == 'fraudulent'){
+    //New status is fraudulent. Add to fraud table.
+    db_insert('commerce_order_fraud')->fields(array('order_id' => $order->order_id))->execute();
+
+  }
+  else if ($order->original->status == 'fraudulent'){
+    //Old status is fraudulent. Remove from fraud table.
+    db_delete('commerce_order_fraud')->condition('order_id', $order->order_id)->execute();
+  }
+}
 ?>
