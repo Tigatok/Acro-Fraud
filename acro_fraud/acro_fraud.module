@@ -63,9 +63,10 @@ function acro_fraud_form($form, &$form_state){
     ->fetchAssoc();
     $fraud_score=$result['risk_score'];
     if($fraud_score == ''){
-//      $fraud_score =0;
+      // If the order doesn't have a score yet, calculate it now
       $fraud_score = calc_risk_score($order->order_id);
     }
+
     $options[$order->order_id] = array(
       'order_id'=> $order->order_id,
         'fraud_score'=>$fraud_score,
@@ -98,14 +99,23 @@ function acro_fraud_form($form, &$form_state){
 function acro_fraud_submit($form, &$form_state){
   if(isset($form_state['values']['fraud_orders'])){
     foreach($form_state['values']['fraud_orders'] as $key => $value){
-      if($value !== 0){
+      if($value !== 0) {
         //Insert into DB here.
         $record = [
-          'order_id'=>$key,
-          'risk_score'=>calc_risk_score($key),
+            'order_id' => $key,
+            'risk_score' => calc_risk_score($key),
         ];
-        drupal_write_record('commerce_order_risk', $record);
-        drupal_set_message('Risk Score Updated.','status');
+        // Check if the record exists and update or insert it as appropriate
+        $exists = db_query('SELECT 1 from commerce_order_risk WHERE order_id = :oid',
+            array(':oid' => $key))->fetchField();
+        if (!$exists) {
+          drupal_write_record('commerce_order_risk', $record);
+          drupal_set_message('Risk Score Entered.', 'status');//'Risk Score Updated.'
+        }
+        else {
+          // If the record already exists we could check if the score will be different and update it
+          drupal_set_message('Risk Score Updated.', 'status');
+        }
       }
     }
   }
@@ -114,11 +124,12 @@ function acro_fraud_submit($form, &$form_state){
  * Constants which are the defaults for the minimum values
  * for an element to be considered risky.
  *
- * i.e., acro_fraud_price_min should be the price at which
+ * i.e., acceptable_price_max should be the price at which
  * any order total greater than (closer to positive infinity)
- * acro_fraud_price_min will contribute to the risk score.
+ * acceptable_price_max will contribute to the risk score.
  */
-$GLOBALS['acro_fraud_price_min'] = 50;
+$GLOBALS['acceptable_price_max'] = 50;
+$GLOBALS['po_box_scary'] = true;
 /**
  * Calculates the risk score for an order.
  *
@@ -130,7 +141,11 @@ $GLOBALS['acro_fraud_price_min'] = 50;
  * @return float|int
  */
 function calc_risk_score($order_id) {
-  return calc_price_risk($order_id, $GLOBALS['acro_fraud_price_min']);
+  $reason = NULL;
+  $total_score = calc_price_risk($order_id, $GLOBALS['acceptable_price_max']);
+  if ($total_score > 0)
+    $reason = 'price';
+  return $total_score;
 }
 
 /**
@@ -155,10 +170,10 @@ function calc_price_risk($order_id, $price_min) {
   $order_total = $result['commerce_order_total_amount'];
   $order_total = round($order_total / 100); // Order total cents -> dollars
 
-  if ($order_total <= $GLOBALS['acro_fraud_price_min'])
+  if ($order_total <= $GLOBALS['acceptable_price_max'])
     return 0;
 
-  $r_price = $order_total / $GLOBALS['acro_fraud_price_min'];
+  $r_price = $order_total / $GLOBALS['acceptable_price_max'];
   $price_risk = round($r_price * 5);
   return $price_risk;
 }
