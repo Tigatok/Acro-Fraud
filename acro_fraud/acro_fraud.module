@@ -10,7 +10,7 @@
 function acro_fraud_menu(){
   $items = array();
   $items['admin/commerce/config/advanced-settings/fraud'] = array(
-      'title'=>'Fraud detection',
+      'title'=>'Fraud Detection',
       'page callback'=>'drupal_get_form',
       'page arguments'=> array('acro_fraud_form'),
       'access arguments' => array('administer acro_fraud settings'),
@@ -23,7 +23,7 @@ function acro_fraud_menu(){
       'weight' => 1,
   );
 
-  $items["admin/commerce/config/advanced-settings/fraud/second"] = array(
+  $items["admin/commerce/config/advanced-settings/fraud/settings"] = array(
       'type' => MENU_LOCAL_TASK,
       'title' => 'Fraud Settings',
       'page callback' => 'drupal_get_form',

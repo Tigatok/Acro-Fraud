@@ -8,16 +8,16 @@
 function acro_fraud_admin_settings() {
     $form = array();
 
-    $form['setting1'] = array(
+    $form['threshold_settings'] = array(
         '#type' => 'fieldset',
-        '#title' => t('Setting 1'),
+        '#title' => t('Threshold Settings'),
     );
 
-    $form['setting1']['setting1'] = array(
+    $form['threshold_settings']['threshold'] = array(
         '#type' => 'textfield',
         '#title' => t('Large Transaction Size'),
         '#description' => t('What would you consider to be an abdnormally large charge?'),
-        '#default_value' => variable_get('setting1', 10000),
+        '#default_value' => variable_get('threshold', 10000),
         '#element_validate' => array('element_validate_integer')
 
     );
