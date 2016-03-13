@@ -17,6 +17,22 @@ function acro_fraud_menu(){
     'access callback' => TRUE,
       'type'=>MENU_NORMAL_ITEM,
   );
+  $items['admin/commerce/config/advanced-settings/fraud/default'] = array(
+      'type' => MENU_DEFAULT_LOCAL_TASK,
+      'title' => 'Possible Fraud',
+      'weight' => 1,
+  );
+
+  $items["admin/commerce/config/advanced-settings/fraud/second"] = array(
+      'type' => MENU_LOCAL_TASK,
+      'title' => 'Fraud Settings',
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('acro_fraud_admin_settings'),
+      'access arguments' => array('fraud setting'),
+      'access callback' => TRUE,
+      'weight' => 2,
+      'file' => '/includes/acro_fraud.admin.inc'
+  );
   return $items;
 }
 
