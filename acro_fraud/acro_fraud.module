@@ -33,6 +33,7 @@ function acro_fraud_menu(){
       'weight' => 2,
       'file' => '/includes/acro_fraud.admin.inc'
   );
+  notify_admin("test");
   return $items;
 }
 
@@ -209,7 +210,6 @@ function acro_fraud_views_api() {
  */
 function acro_fraud_views_default_views() {
 
-  notify_admin("test");
   $view = new view();
   $view->name = 'order_risk';
   $view->description = 'Displays the risk score of orders';
@@ -636,7 +636,9 @@ function notify_admin($order){
   if(variable_get('developer_settings')){
     $email = 'tmarshall@acromediainc.com';
   } else {
-    dpm($user, "user");
+    $email = variable_get('site_mail', 'tmarshall@acromediainc.com');
   }
+  $message = drupal_mail('acro_fraud', 'notice', $email, 'en',  false);
+  dpm($message, "message");
 }
 ?>
