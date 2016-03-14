@@ -140,12 +140,15 @@ function acro_fraud_submit($form, &$form_state){
  * Constants which are the defaults for the minimum values
  * for an element to be considered risky.
  *
- * i.e., acceptable_price_max should be the price at which
+ * variable 'threshold' is the price at which
  * any order total greater than (closer to positive infinity)
- * acceptable_price_max will contribute to the risk score.
+ * the threshold will contribute to the risk score.
+ *
+ * variable 'po_box' is the weight associated with finding a
+ * a P.O. Box address. A weight of n will always add n to the score.
+ *
  */
-$GLOBALS['acceptable_price_max'] = 50;
-$GLOBALS['po_box_scary'] = true;
+
 /**
  * Calculates the risk score for an order.
  *
@@ -157,11 +160,12 @@ $GLOBALS['po_box_scary'] = true;
  * @return float|int
  */
 function calc_risk_score($order_id) {
-  $reason = NULL;
-  $total_score = calc_price_risk($order_id, $GLOBALS['acceptable_price_max']);
-  if ($total_score > 0)
-    $reason = 'price';
-  return $total_score;
+  //$total_score = calc_price_risk($order_id, $GLOBALS['acceptable_price_max']);
+  $price_s = calc_price_risk($order_id, variable_get('threshold', 10000));
+
+
+  $po_s = calc_po_box_risk($order_id);
+  return $price_s + $po_s;
 }
 
 /**
@@ -176,7 +180,7 @@ function calc_risk_score($order_id) {
  * @param $price_min
  * @return float|int
  */
-function calc_price_risk($order_id, $price_min) {
+function calc_price_risk($order_id, $price_max) {
 
   $result = db_select('field_data_commerce_order_total', 'ft')
       ->fields('ft')
@@ -186,12 +190,22 @@ function calc_price_risk($order_id, $price_min) {
   $order_total = $result['commerce_order_total_amount'];
   $order_total = round($order_total / 100); // Order total cents -> dollars
 
-  if ($order_total <= $GLOBALS['acceptable_price_max'])
+  if ($order_total <= $price_max)
     return 0;
 
-  $r_price = $order_total / $GLOBALS['acceptable_price_max'];
+  $r_price = $order_total / $price_max;
   $price_risk = round($r_price * 5);
+
+  // Set the $price_risk to be associated with the price reason
+  // and store it
   return $price_risk;
+}
+
+function calc_po_box_risk($order_id) {
+  $weight = variable_get('po_box', 10);
+  // Set the $weight to be associated with the po_box reason
+  // and store it
+  return $weight;
 }
 
 /**
