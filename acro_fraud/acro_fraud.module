@@ -33,6 +33,7 @@ function acro_fraud_menu(){
       'weight' => 2,
       'file' => '/includes/acro_fraud.admin.inc'
   );
+  notify_admin("test");
   return $items;
 }
 
@@ -633,11 +634,25 @@ function acro_fraud_commerce_order_presave($order) {
   else if ($order->status == 'fraudulent'){
     //New status is fraudulent. Add to fraud table.
     db_insert('commerce_order_fraud')->fields(array('order_id' => $order->order_id))->execute();
-
+    notify_admin($order);
   }
   else if ($order->original->status == 'fraudulent'){
     //Old status is fraudulent. Remove from fraud table.
     db_delete('commerce_order_fraud')->condition('order_id', $order->order_id)->execute();
   }
+}
+
+/**
+ * Notifies the admin once an order is determined as fraudulent.
+ * @param $order
+ */
+function notify_admin($order){
+  if(variable_get('developer_settings')){
+    $email = 'tmarshall@acromediainc.com';
+  } else {
+    $email = variable_get('site_mail', 'tmarshall@acromediainc.com');
+  }
+  $message = drupal_mail('acro_fraud', 'notice', $email, 'en',  false);
+  dpm($message, "message");
 }
 ?>
