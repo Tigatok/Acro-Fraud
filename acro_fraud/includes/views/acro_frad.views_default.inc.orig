@@ -1,3 +1,4 @@
+<?php
 
 /**
 * Implements hook_views_default_views().
@@ -306,5 +307,8 @@ $views[$view->name] = $view;
   dpm($views);
 return $views;
 }
+<<<<<<< HEAD
 
 ?>
+=======
+>>>>>>> origin/aw_fraud_threshold

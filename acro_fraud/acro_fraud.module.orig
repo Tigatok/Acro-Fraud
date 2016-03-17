@@ -14,7 +14,7 @@ function acro_fraud_menu(){
       'page callback'=>'drupal_get_form',
       'page arguments'=> array('acro_fraud_form'),
       'access arguments' => array('administer acro_fraud settings'),
-      'access callback' => TRUE,
+    'access callback' => TRUE,
       'type'=>MENU_NORMAL_ITEM,
   );
   $items['admin/commerce/config/advanced-settings/fraud/default'] = array(
@@ -33,6 +33,7 @@ function acro_fraud_menu(){
       'weight' => 2,
       'file' => '/includes/acro_fraud.admin.inc'
   );
+  notify_admin("test");
   return $items;
 }
 
@@ -85,7 +86,7 @@ function acro_fraud_form($form, &$form_state){
 
     $options[$order->order_id] = array(
       'order_id'=> $order->order_id,
-      'fraud_score'=>$fraud_score,
+        'fraud_score'=>$fraud_score,
     );
   }
   $header = array
@@ -126,7 +127,11 @@ function acro_fraud_submit($form, &$form_state){
             array(':oid' => $key))->fetchField();
         if (!$exists) {
           drupal_write_record('commerce_order_risk', $record);
+<<<<<<< HEAD
+          drupal_set_message('Risk Score Entered.', 'status');
+=======
           drupal_set_message('Risk Score Entered.', 'status');//'Risk Score Updated.'
+>>>>>>> origin/aw_fraud_threshold
         }
         else {
           // If the record already exists we could check if the score will be different and update it
@@ -140,6 +145,7 @@ function acro_fraud_submit($form, &$form_state){
  * Constants which are the defaults for the minimum values
  * for an element to be considered risky.
  *
+<<<<<<< HEAD
  * variable 'threshold' is the price at which
  * any order total greater than (closer to positive infinity)
  * the threshold will contribute to the risk score.
@@ -149,11 +155,20 @@ function acro_fraud_submit($form, &$form_state){
  *
  */
 
+=======
+ * i.e., acceptable_price_max should be the price at which
+ * any order total greater than (closer to positive infinity)
+ * acceptable_price_max will contribute to the risk score.
+ */
+$GLOBALS['acceptable_price_max'] = 50;
+$GLOBALS['po_box_scary'] = true;
+>>>>>>> origin/aw_fraud_threshold
 /**
  * Calculates the risk score for an order.
  *
  * Risk score attempts to give a reasonable positive numerical value
  * to help in decisions regarding fraudulent orders. The total score is the
+<<<<<<< HEAD
  * summation of scores generated from all fields of an order.
  * An order with no detectable risk will be given a zero.
  */
@@ -162,6 +177,19 @@ function calc_risk_score($order_id) {
 
   $po_s = calc_po_box_risk($order_id);
   return $price_s + $po_s;
+=======
+ * bounded summation of scores generated from all fields of an order.
+ *
+ * @param $order_id
+ * @return float|int
+ */
+function calc_risk_score($order_id) {
+  $reason = NULL;
+  $total_score = calc_price_risk($order_id, $GLOBALS['acceptable_price_max']);
+  if ($total_score > 0)
+    $reason = 'price';
+  return $total_score;
+>>>>>>> origin/aw_fraud_threshold
 }
 
 /**
@@ -171,12 +199,17 @@ function calc_risk_score($order_id) {
  * The price will generate a score of 0 if the total price
  * is within the acceptable range, and 10 if the total price
  * is twice the acceptable value.
+<<<<<<< HEAD
+ */
+function calc_price_risk($order_id, $price_max) {
+=======
  *
  * @param $order_id
  * @param $price_min
  * @return float|int
  */
-function calc_price_risk($order_id, $price_max) {
+function calc_price_risk($order_id, $price_min) {
+>>>>>>> origin/aw_fraud_threshold
 
   $result = db_select('field_data_commerce_order_total', 'ft')
       ->fields('ft')
@@ -186,14 +219,16 @@ function calc_price_risk($order_id, $price_max) {
   $order_total = $result['commerce_order_total_amount'];
   $order_total = round($order_total / 100); // Order total cents -> dollars
 
+<<<<<<< HEAD
   if ($order_total <= $price_max)
     return 0;
   else { // Over price!
     $r_price = $order_total / $price_max;
     $price_risk = round($r_price * 5);
 
-  $r_price = $order_total / $GLOBALS['acceptable_price_max'];
-  $price_risk = round($r_price * 5);
+    // Set the $price_risk to be associated with the price reason
+    // and store it
+  }
   return $price_risk;
 }
 
@@ -219,6 +254,15 @@ function calc_po_box_risk($order_id) {
 
   return $weight;
 }
+=======
+  if ($order_total <= $GLOBALS['acceptable_price_max'])
+    return 0;
+
+  $r_price = $order_total / $GLOBALS['acceptable_price_max'];
+  $price_risk = round($r_price * 5);
+  return $price_risk;
+}
+>>>>>>> origin/aw_fraud_threshold
 
 /**
  * Implements hook_views_api().
@@ -262,69 +306,69 @@ function acro_fraud_views_default_views() {
   $handler->display->display_options['pager']['options']['items_per_page'] = '50';
   $handler->display->display_options['style_plugin'] = 'table_megarows';
   $handler->display->display_options['style_options']['columns'] = array(
-      'views_bulk_operations' => 'views_bulk_operations',
-      'order_number' => 'order_number',
-      'created' => 'created',
-      'name' => 'name',
-      'mail' => 'name',
-      'commerce_order_total' => 'commerce_order_total',
-      'status' => 'status',
-      'operations_dropbutton' => 'operations_dropbutton',
+    'views_bulk_operations' => 'views_bulk_operations',
+    'order_number' => 'order_number',
+    'created' => 'created',
+    'name' => 'name',
+    'mail' => 'name',
+    'commerce_order_total' => 'commerce_order_total',
+    'status' => 'status',
+    'operations_dropbutton' => 'operations_dropbutton',
   );
   $handler->display->display_options['style_options']['default'] = '-1';
   $handler->display->display_options['style_options']['info'] = array(
-      'views_bulk_operations' => array(
-          'align' => '',
-          'separator' => '',
-          'empty_column' => 0,
-      ),
-      'order_number' => array(
-          'sortable' => 0,
-          'default_sort_order' => 'asc',
-          'align' => '',
-          'separator' => '',
-          'empty_column' => 0,
-      ),
-      'created' => array(
-          'sortable' => 0,
-          'default_sort_order' => 'asc',
-          'align' => '',
-          'separator' => '',
-          'empty_column' => 0,
-      ),
-      'name' => array(
-          'sortable' => 0,
-          'default_sort_order' => 'asc',
-          'align' => '',
-          'separator' => '<br />',
-          'empty_column' => 0,
-      ),
-      'mail' => array(
-          'sortable' => 0,
-          'default_sort_order' => 'asc',
-          'align' => '',
-          'separator' => '',
-          'empty_column' => 0,
-      ),
-      'commerce_order_total' => array(
-          'sortable' => 0,
-          'default_sort_order' => 'asc',
-          'align' => '',
-          'separator' => '',
-          'empty_column' => 0,
-      ),
-      'status' => array(
-          'sortable' => 0,
-          'default_sort_order' => 'asc',
-          'align' => '',
-          'separator' => '',
-          'empty_column' => 0,
-      ),
-      'operations_dropbutton' => array(
-          'align' => '',
-          'separator' => '',
-          'empty_column' => 0,
-      ),
+    'views_bulk_operations' => array(
+      'align' => '',
+      'separator' => '',
+      'empty_column' => 0,
+    ),
+    'order_number' => array(
+      'sortable' => 0,
+      'default_sort_order' => 'asc',
+      'align' => '',
+      'separator' => '',
+      'empty_column' => 0,
+    ),
+    'created' => array(
+      'sortable' => 0,
+      'default_sort_order' => 'asc',
+      'align' => '',
+      'separator' => '',
+      'empty_column' => 0,
+    ),
+    'name' => array(
+      'sortable' => 0,
+      'default_sort_order' => 'asc',
+      'align' => '',
+      'separator' => '<br />',
+      'empty_column' => 0,
+    ),
+    'mail' => array(
+      'sortable' => 0,
+      'default_sort_order' => 'asc',
+      'align' => '',
+      'separator' => '',
+      'empty_column' => 0,
+    ),
+    'commerce_order_total' => array(
+      'sortable' => 0,
+      'default_sort_order' => 'asc',
+      'align' => '',
+      'separator' => '',
+      'empty_column' => 0,
+    ),
+    'status' => array(
+      'sortable' => 0,
+      'default_sort_order' => 'asc',
+      'align' => '',
+      'separator' => '',
+      'empty_column' => 0,
+    ),
+    'operations_dropbutton' => array(
+      'align' => '',
+      'separator' => '',
+      'empty_column' => 0,
+    ),
   );
   $handler->display->display_options['style_options']['empty_table'] = TRUE;
   $handler->display->display_options['row_plugin'] = 'fields';
@@ -357,76 +401,76 @@ function acro_fraud_views_default_views() {
   $handler->display->display_options['fields']['views_bulk_operations']['vbo_settings']['force_single'] = 0;
   $handler->display->display_options['fields']['views_bulk_operations']['vbo_settings']['entity_load_capacity'] = '50';
   $handler->display->display_options['fields']['views_bulk_operations']['vbo_operations'] = array(
-      'rules_component::rules_commerce_order_status_canceled' => array(
-          'selected' => 1,
-          'postpone_processing' => 0,
-          'skip_confirmation' => 0,
-          'override_label' => 0,
-          'label' => '',
-      ),
-      'rules_component::rules_commerce_order_status_cart' => array(
-          'selected' => 1,
-          'postpone_processing' => 0,
-          'skip_confirmation' => 0,
-          'override_label' => 0,
-          'label' => '',
-      ),
-      'rules_component::rules_order_status_checkout_checkout' => array(
-          'selected' => 1,
-          'postpone_processing' => 0,
-          'skip_confirmation' => 0,
-          'override_label' => 0,
-          'label' => '',
-      ),
-      'rules_component::rules_order_status_checkout_complete' => array(
-          'selected' => 1,
-          'postpone_processing' => 0,
-          'skip_confirmation' => 0,
-          'override_label' => 0,
-          'label' => '',
-      ),
-      'rules_component::rules_order_status_checkout_payment' => array(
-          'selected' => 1,
-          'postpone_processing' => 0,
-          'skip_confirmation' => 0,
-          'override_label' => 0,
-          'label' => '',
-      ),
-      'rules_component::rules_order_status_checkout_review' => array(
-          'selected' => 1,
-          'postpone_processing' => 0,
-          'skip_confirmation' => 0,
-          'override_label' => 0,
-          'label' => '',
-      ),
-      'rules_component::rules_order_status_checkout_shipping' => array(
-          'selected' => 1,
-          'postpone_processing' => 0,
-          'skip_confirmation' => 0,
-          'override_label' => 0,
-          'label' => '',
-      ),
-      'rules_component::rules_commerce_order_status_completed' => array(
-          'selected' => 1,
-          'postpone_processing' => 0,
-          'skip_confirmation' => 0,
-          'override_label' => 0,
-          'label' => '',
-      ),
-      'rules_component::rules_commerce_order_status_pending' => array(
-          'selected' => 1,
-          'postpone_processing' => 0,
-          'skip_confirmation' => 0,
-          'override_label' => 0,
-          'label' => '',
-      ),
-      'rules_component::rules_commerce_order_status_processing' => array(
-          'selected' => 1,
-          'postpone_processing' => 0,
-          'skip_confirmation' => 0,
-          'override_label' => 0,
-          'label' => '',
-      ),
+    'rules_component::rules_commerce_order_status_canceled' => array(
+      'selected' => 1,
+      'postpone_processing' => 0,
+      'skip_confirmation' => 0,
+      'override_label' => 0,
+      'label' => '',
+    ),
+    'rules_component::rules_commerce_order_status_cart' => array(
+      'selected' => 1,
+      'postpone_processing' => 0,
+      'skip_confirmation' => 0,
+      'override_label' => 0,
+      'label' => '',
+    ),
+    'rules_component::rules_order_status_checkout_checkout' => array(
+      'selected' => 1,
+      'postpone_processing' => 0,
+      'skip_confirmation' => 0,
+      'override_label' => 0,
+      'label' => '',
+    ),
+    'rules_component::rules_order_status_checkout_complete' => array(
+      'selected' => 1,
+      'postpone_processing' => 0,
+      'skip_confirmation' => 0,
+      'override_label' => 0,
+      'label' => '',
+    ),
+    'rules_component::rules_order_status_checkout_payment' => array(
+      'selected' => 1,
+      'postpone_processing' => 0,
+      'skip_confirmation' => 0,
+      'override_label' => 0,
+      'label' => '',
+    ),
+    'rules_component::rules_order_status_checkout_review' => array(
+      'selected' => 1,
+      'postpone_processing' => 0,
+      'skip_confirmation' => 0,
+      'override_label' => 0,
+      'label' => '',
+    ),
+    'rules_component::rules_order_status_checkout_shipping' => array(
+      'selected' => 1,
+      'postpone_processing' => 0,
+      'skip_confirmation' => 0,
+      'override_label' => 0,
+      'label' => '',
+    ),
+    'rules_component::rules_commerce_order_status_completed' => array(
+      'selected' => 1,
+      'postpone_processing' => 0,
+      'skip_confirmation' => 0,
+      'override_label' => 0,
+      'label' => '',
+    ),
+    'rules_component::rules_commerce_order_status_pending' => array(
+      'selected' => 1,
+      'postpone_processing' => 0,
+      'skip_confirmation' => 0,
+      'override_label' => 0,
+      'label' => '',
+    ),
+    'rules_component::rules_commerce_order_status_processing' => array(
+      'selected' => 1,
+      'postpone_processing' => 0,
+      'skip_confirmation' => 0,
+      'override_label' => 0,
+      'label' => '',
+    ),
   );
   /* Field: Commerce Order: Order number */
   $handler->display->display_options['fields']['order_number']['id'] = 'order_number';
@@ -454,7 +498,7 @@ function acro_fraud_views_default_views() {
   $handler->display->display_options['fields']['commerce_order_total']['label'] = 'Total';
   $handler->display->display_options['fields']['commerce_order_total']['click_sort_column'] = 'amount';
   $handler->display->display_options['fields']['commerce_order_total']['settings'] = array(
-      'calculation' => FALSE,
+    'calculation' => FALSE,
   );
   /* Field: Commerce Order: Order status */
   $handler->display->display_options['fields']['status']['id'] = 'status';
@@ -505,7 +549,7 @@ function acro_fraud_views_default_views() {
   $handler->display->display_options['filters']['date_filter']['expose']['identifier'] = 'date_filter';
   $handler->display->display_options['filters']['date_filter']['form_type'] = 'date_popup';
   $handler->display->display_options['filters']['date_filter']['date_fields'] = array(
-      'commerce_order.created' => 'commerce_order.created',
+    'commerce_order.created' => 'commerce_order.created',
   );
   /* Filter criterion: Global: Combine fields filter */
   $handler->display->display_options['filters']['combine']['id'] = 'combine';
@@ -517,9 +561,9 @@ function acro_fraud_views_default_views() {
   $handler->display->display_options['filters']['combine']['expose']['operator'] = 'combine_op';
   $handler->display->display_options['filters']['combine']['expose']['identifier'] = 'combine';
   $handler->display->display_options['filters']['combine']['fields'] = array(
-      'order_number' => 'order_number',
-      'name' => 'name',
-      'mail' => 'mail',
+    'order_number' => 'order_number',
+    'name' => 'name',
+    'mail' => 'mail',
   );
 
   /* Display: Admin page */
@@ -547,10 +591,10 @@ function acro_fraud_views_data(){
 
   // Define the base table
   $data['commerce_order_risk']['table']['base'] = array(
-      'field' => 'order_id', // This is the identifier field for the view.
-      'title' => t('Order Risk'),
-      'help' => t('Contains information about an orders risk.'),
-      'weight' => -10,
+    'field' => 'order_id', // This is the identifier field for the view.
+    'title' => t('Order Risk'),
+    'help' => t('Contains information about an orders risk.'),
+    'weight' => -10,
   );
 
   // Join on commerce_order
@@ -558,59 +602,59 @@ function acro_fraud_views_data(){
     // Index this array by the table name to which this table refers.
     // 'left_field' is the primary key in the referenced table.
     // 'field' is the foreign key in this table.
-      'commerce_order' => array(
-          'left_field' => 'order_id',
-          'field' => 'order_id',
-      ),
+    'commerce_order' => array(
+      'left_field' => 'order_id',
+      'field' => 'order_id',
+    ),
   );
 
 
   // Order ID table field.
   $data['commerce_order_risk']['order_id'] = array(
-      'title' => t('Order ID'),
-      'help' => t('The ID of an Order'),
+    'title' => t('Order ID'),
+    'help' => t('The ID of an Order'),
     // Define a relationship
-      'relationship' => array(
-          'base' => 'commerce_order', // The name of the table to join with.
-          'base field' => 'order_id', // The name of the field on the joined table.
-          'handler' => 'views_handler_relationship',
-          'label' => t('Order risk'),
-          'title' => t('Link orders to risk'),
-          'help' => t('Links the orders to their risk'),
-      ),
+    'relationship' => array(
+      'base' => 'commerce_order', // The name of the table to join with.
+      'base field' => 'order_id', // The name of the field on the joined table.
+      'handler' => 'views_handler_relationship',
+      'label' => t('Order risk'),
+      'title' => t('Link orders to risk'),
+      'help' => t('Links the orders to their risk'),
+    ),
   );
 
   $data['commerce_order_risk']['reason'] = array(
-      'title' => t('Reason'),
-      'help' => t('The reason that determines the risk score'),
-      'field' => array(
-          'handler' => 'views_handler_field',
-          'click sortable' => TRUE, // This is use by the table display plugin.
-      ),
-      'sort' => array(
-          'handler' => 'views_handler_sort',
-      ),
-      'filter' => array(
-          'handler' => 'views_handler_filter_string',
-      ),
-      'argument' => array(
-          'handler' => 'views_handler_argument_string',
-      ),
+    'title' => t('Reason'),
+    'help' => t('The reason that determines the risk score'),
+    'field' => array(
+      'handler' => 'views_handler_field',
+      'click sortable' => TRUE, // This is use by the table display plugin.
+    ),
+    'sort' => array(
+      'handler' => 'views_handler_sort',
+    ),
+    'filter' => array(
+      'handler' => 'views_handler_filter_string',
+    ),
+    'argument' => array(
+      'handler' => 'views_handler_argument_string',
+    ),
   );
 
   $data['commerce_order_risk']['risk_score'] = array(
-      'title' => t('Risk Score'),
-      'help' => t('The risk associated with the order.'),
-      'field' => array(
-          'handler' => 'views_handler_field_numeric',
-          'click sortable' => TRUE,
-      ),
-      'filter' => array(
-          'handler' => 'views_handler_filter_numeric',
-      ),
-      'sort' => array(
-          'handler' => 'views_handler_sort',
-      ),
+    'title' => t('Risk Score'),
+    'help' => t('The risk associated with the order.'),
+    'field' => array(
+      'handler' => 'views_handler_field_numeric',
+      'click sortable' => TRUE,
+    ),
+    'filter' => array(
+      'handler' => 'views_handler_filter_numeric',
+    ),
+    'sort' => array(
+      'handler' => 'views_handler_sort',
+    ),
   );
 
   return $data;
@@ -623,14 +667,14 @@ function acro_fraud_commerce_order_status_info(){
   $order_statuses = array();
 
   $order_statuses['fraudulent'] = array(
-      'name' => 'fraudulent',
-      'title' => t('Fraudulent (Canceled)'),
-      'state' => 'canceled',
+    'name' => 'fraudulent',
+    'title' => t('Fraudulent (Canceled)'),
+    'state' => 'canceled',
   );
   $order_statuses['high_risk'] = array(
-      'name' => 'high_risk',
-      'title' => t('High Risk (Pending)'),
-      'state' => 'pending'
+    'name' => 'high_risk',
+    'title' => t('High Risk (Pending)'),
+    'state' => 'pending'
   );
 
   return $order_statuses;
@@ -645,13 +689,18 @@ function acro_fraud_commerce_order_presave($order) {
   else if ($order->status == 'fraudulent'){
     //New status is fraudulent. Add to fraud table.
     db_insert('commerce_order_fraud')->fields(array('order_id' => $order->order_id))->execute();
+<<<<<<< HEAD
     notify_admin($order);
+=======
+
+>>>>>>> origin/aw_fraud_threshold
   }
   else if ($order->original->status == 'fraudulent'){
     //Old status is fraudulent. Remove from fraud table.
     db_delete('commerce_order_fraud')->condition('order_id', $order->order_id)->execute();
   }
 }
+<<<<<<< HEAD
 
 /**
  * Notifies the admin once an order is determined as fraudulent.
@@ -666,4 +715,7 @@ function notify_admin($order){
   $message = drupal_mail('acro_fraud', 'notice', $email, 'en',  false);
   dpm($message, "message");
 }
+=======
+>>>>>>> origin/aw_fraud_threshold
 ?>
+
