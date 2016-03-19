@@ -78,10 +78,13 @@ function acro_fraud_form($form, &$form_state){
     ->execute()
     ->fetchAssoc();
     $fraud_score=$result['risk_score'];
+
     if($fraud_score == ''){
       // If the order doesn't have a score yet, calculate it now
-      $fraud_score = calc_risk_score($order->order_id);
+      calc_risk_score($order->order_id);
     }
+
+    $fraud_score = acro_fraud_get_total_score($order->order_id);
 
     $options[$order->order_id] = array(
       'order_id'=> $order->order_id,
@@ -108,36 +111,6 @@ function acro_fraud_form($form, &$form_state){
   );
   return $form;
 }
-
-/**
- * Implements hook_submit().
- */
-function acro_fraud_submit($form, &$form_state){
-  if(isset($form_state['values']['fraud_orders'])){
-    foreach($form_state['values']['fraud_orders'] as $key => $value){
-      if($value !== 0) {
-        //Insert into DB here.
-        $record = [
-            'order_id' => $key,
-            'risk_score' => calc_risk_score($key),
-            'reason' => 'REASON1',
-        ];
-        // Check if the record exists and update or insert it as appropriate
-        $exists = db_query('SELECT 1 from commerce_order_risk WHERE order_id = :oid',
-            array(':oid' => $key))->fetchField();
-        if (!$exists) {
-          drupal_write_record('commerce_order_risk', $record);
-          drupal_set_message('Risk Score Entered.', 'status');//'Risk Score Updated.'
-        }
-        else {
-          // If the record already exists we could check if the score will be different and update it
-          drupal_set_message('Risk Score Updated.', 'status');
-        }
-      }
-    }
-  }
-}
-
 /**
  * Implements hook_uninstall().
  */
@@ -149,6 +122,36 @@ function acro_fraud_enable() {
     drupal_install_schema('acro_fraud');
   }
 }
+/**
+ * Implements hook_submit().
+ */
+function acro_fraud_submit($form, &$form_state){
+  if(isset($form_state['values']['fraud_orders'])){
+    foreach($form_state['values']['fraud_orders'] as $key => $value){
+      if($value !== 0) {
+        //Insert into DB here. // Change insertion to where the reasons are determined.
+        calc_risk_score($key);
+//        $record = [
+//            'order_id' => $key,
+//            'risk_score' => calc_risk_score($key),
+//            'reason' => 'REASON1',
+//        ];
+        // Check if the record exists and update or insert it as appropriate
+//        $exists = db_query('SELECT 1 from commerce_order_risk WHERE order_id = :oid',
+//            array(':oid' => $key))->fetchField();
+//        if (!$exists) {
+//          drupal_write_record('commerce_order_risk', $record);
+//          drupal_set_message('Risk Score Entered.', 'status');//'Risk Score Updated.'
+//        }
+//        else {
+//          // If the record already exists we could check if the score will be different and update it
+//          drupal_set_message('Risk Score Updated.', 'status');
+//        }
+      }
+    }
+  }
+}
+
 /**
  * Constants which are the defaults for the minimum values
  * for an element to be considered risky.
@@ -171,7 +174,7 @@ function acro_fraud_enable() {
  * An order with no detectable risk will be given a zero.
  */
 function calc_risk_score($order_id) {
-  $price_s = calc_price_risk($order_id, variable_get('threshold', 10000));
+  $price_s = calc_price_risk($order_id);
 
   $po_s = calc_po_box_risk($order_id);
   return $price_s + $po_s;
@@ -189,8 +192,8 @@ function calc_risk_score($order_id) {
  * @param $price_min
  * @return float|int
  */
-function calc_price_risk($order_id, $price_max) {
-
+function calc_price_risk($order_id) {
+  $price_max = variable_get('threshold', 10000);
   $result = db_select('field_data_commerce_order_total', 'ft')
       ->fields('ft')
       ->condition('entity_id', $order_id, '=')
@@ -204,8 +207,35 @@ function calc_price_risk($order_id, $price_max) {
   else { // Over price!
     $r_price = $order_total / $price_max;
     $price_risk = round($r_price * 5);
+
+    acro_fraud_insert_reason($order_id, $price_risk, 'price');
   }
   return $price_risk;
+}
+function acro_fraud_insert_reason($order_id, $score, $reason) {
+  $record = [
+    'order_id' => $order_id,
+    'risk_score' => $score,
+    'reason' => $reason,
+  ];
+  // Check if the record exists and update or insert it as appropriate
+  $exists = db_query('SELECT 1 from commerce_order_risk WHERE order_id = :oid AND reason = :r',
+      array(':oid' => $order_id, ':r' => $reason))->fetchField();
+  if (!$exists) {
+    drupal_write_record('commerce_order_risk', $record);
+    drupal_set_message($reason . 'NOT EXISTS', 'status');
+  }
+  else {
+    // If the record already exists
+    drupal_set_message($reason . 'EXISTS ' . acro_fraud_get_total_score($order_id), 'status');
+  }
+}
+function acro_fraud_get_total_score($order_id) {
+  $total = db_query('SELECT sum(risk_score) FROM commerce_order_risk WHERE order_id = :oid',
+      array(':oid' => $order_id))->fetchField();
+  if (empty($total))
+    return 0;
+  return $total;
 }
 
 /**
@@ -227,6 +257,8 @@ function calc_po_box_risk($order_id) {
 
   // Set the $weight to be associated with the po_box reason
   // and store it
+  if ($weight > 0)
+    acro_fraud_insert_reason($order_id, $weight, 'pobox');
 
   return $weight;
 }
