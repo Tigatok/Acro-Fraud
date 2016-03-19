@@ -191,9 +191,7 @@ function calc_price_risk($order_id, $price_max) {
   else { // Over price!
     $r_price = $order_total / $price_max;
     $price_risk = round($r_price * 5);
-
-  $r_price = $order_total / $GLOBALS['acceptable_price_max'];
-  $price_risk = round($r_price * 5);
+  }
   return $price_risk;
 }
 
