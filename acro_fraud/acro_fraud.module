@@ -130,7 +130,7 @@ function acro_fraud_submit($form, &$form_state){
   if(isset($form_state['values']['fraud_orders'])){
     foreach($form_state['values']['fraud_orders'] as $key => $value){
       if($value !== 0) {
-        //Insert into DB here. // Change insertion to where the reasons are determined.
+        // Score is not recalculated on presave -- should it?
         calc_risk_score($key);
 //        $record = [
 //            'order_id' => $key,
@@ -723,12 +723,12 @@ function acro_fraud_commerce_order_presave($order) {
  * @param $order
  */
 function notify_admin($order){
-  if(variable_get('developer_settings')){
-    $email = 'tmarshall@acromediainc.com';
-  } else {
-    $email = variable_get('site_mail', 'tmarshall@acromediainc.com');
-  }
-  $message = drupal_mail('acro_fraud', 'notice', $email, 'en',  false);
-  dpm($message, "message");
+//  if(variable_get('developer_settings')){
+//    $email = 'tmarshall@acromediainc.com';
+//  } else {
+//    $email = variable_get('site_mail', 'tmarshall@acromediainc.com');
+//  }
+//  $message = drupal_mail('acro_fraud', 'notice', $email, 'en',  false);
+//  dpm($message, "message");
 }
 ?>
