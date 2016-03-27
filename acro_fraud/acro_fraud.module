@@ -615,6 +615,22 @@ function acro_fraud_views_data(){
 }
 
 /**
+ * Implements hook_views_pre_view().
+ *
+ * Add order_risk relationship & risk_score field.
+ */
+function acro_fraud_views_pre_view(&$view, &$display_id, &$args) {
+  if ($view->name == 'commerce_backoffice_orders') {
+    $view->add_item($view->current_display, 'relationship', 'commerce_order_risk', 'order_id', array(
+      'label' => '',
+    ), 'order_risk');
+    $view->add_item($view->current_display, 'field', 'commerce_order_risk', 'risk_score', array(
+      'label' => 'Risk Score',
+    ), 'risk_score');
+  }
+}
+
+/**
  * Implements hook_order_status_info()
  */
 function acro_fraud_commerce_order_status_info(){
