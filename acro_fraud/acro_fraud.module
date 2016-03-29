@@ -617,7 +617,7 @@ function acro_fraud_views_data(){
 /**
  * Implements hook_views_pre_view().
  *
- * Add order_risk relationship & risk_score field.
+ * Add order_risk relationship & risk_score field. Add Views Bulk Operations for statuses.
  */
 function acro_fraud_views_pre_view(&$view, &$display_id, &$args) {
   if ($view->name == 'commerce_backoffice_orders') {
@@ -627,6 +627,22 @@ function acro_fraud_views_pre_view(&$view, &$display_id, &$args) {
     $view->add_item($view->current_display, 'field', 'commerce_order_risk', 'risk_score', array(
       'label' => 'Risk Score',
     ), 'risk_score');
+
+    $view->display_handler->default_display->options['fields']['views_bulk_operations']['vbo_operations']['rules_component::rules_commerce_order_status_fraudulent'] = array(
+      'selected' => 1,
+      'postpone_processing' => 0,
+      'skip_confirmation' => 0,
+      'override_label' => 0,
+      'label' => '',
+    );
+    $view->display_handler->default_display->options['fields']['views_bulk_operations']['vbo_operations']['rules_component::rules_commerce_order_status_high_risk'] = array(
+      'selected' => 1,
+      'postpone_processing' => 0,
+      'skip_confirmation' => 0,
+      'override_label' => 0,
+      'label' => '',
+    );
+
   }
 }
 
