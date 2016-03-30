@@ -161,8 +161,8 @@ function calc_risk_score($order_id) {
   $price_s = calc_price_risk($order_id, variable_get('threshold', 10000));
 
   $po_s = calc_po_box_risk($order_id);
-  calc_past_fraud_order_score($order_id);
-  return $price_s + $po_s;
+  $past_fraud_match_factor = calc_past_fraud_order_score($order_id);
+  return (($price_s + $po_s) * $past_fraud_match_factor )/2;
 }
 
 /**
@@ -220,22 +220,15 @@ function calc_po_box_risk($order_id) {
 }
 
 /**
- * @Todo Add customer_id to commerce_order_fraud table
- *
- * Goal:
- * check customers for past fraudulent orders.
- * -Load all orders by customer
- * -Check for order in fraud tables
- *
- * commerce_order_fraud -> load order with $order_id -> load
  * check if any past orders are fraudulent
  * increase score depending on the amount of fraudulent orders.
  * @param $order_id $this order ID to load.
+ * @return int $this the amount of fraudulent matches
  */
 function calc_past_fraud_order_score($order_id)
 {
   $order = commerce_order_load($order_id);
-  $matches = 0;
+  $match_factor = 1;
   $uid = $order->uid;
   dpm($order->uid);
 
@@ -256,8 +249,10 @@ function calc_past_fraud_order_score($order_id)
         ->countQuery()
         ->execute()
         ->fetchField();
-    $matches = $fraud_result;
+    $match_factor = $fraud_result;
   }
+
+  return $match_factor;
 }
 
 /**
