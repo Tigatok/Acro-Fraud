@@ -161,6 +161,7 @@ function calc_risk_score($order_id) {
   $price_s = calc_price_risk($order_id, variable_get('threshold', 10000));
 
   $po_s = calc_po_box_risk($order_id);
+  calc_past_fraud_order_score($order_id);
   return $price_s + $po_s;
 }
 
@@ -216,6 +217,34 @@ function calc_po_box_risk($order_id) {
   // and store it
 
   return $weight;
+}
+
+/**
+ * @Todo Add customer_id to commerce_order_fraud table
+ *
+ * Goal:
+ * check customers for past fraudulent orders.
+ * -Load all orders by customer
+ * -Check for order in fraud tables
+ *
+ * commerce_order_fraud -> load order with $order_id -> load
+ * check if any past orders are fraudulent
+ * increase score depending on the amount of fraudulent orders.
+ * @param $order_id $this order ID to load.
+ */
+function calc_past_fraud_order_score($order_id){
+  $order = commerce_order_load($order_id);
+  $matches = 0;
+  $uid = $order->uid;
+  dpm($order->uid);
+
+  //Query to get all orders for $uid
+  $result = db_select('commerce_order', 'co')
+      ->fields("co")
+      ->condition('uid', $uid, '=')
+      ->execute()
+      ->fetchAssoc();
+  dpm($result, "Query Result");
 }
 
 /**
@@ -654,7 +683,7 @@ function acro_fraud_commerce_order_status_info(){
  * Implements hook_commerce_order_presave().
  */
 function acro_fraud_commerce_order_presave($order) {
-  drupal_set_message("Chicken");
+  dpm($order->original->status);
   if ($order->status == $order->original->status) {} //If the status hasn't changed do nothing
   else if ($order->status == 'fraudulent'){
     //New status is fraudulent. Add to fraud table.
@@ -678,6 +707,5 @@ function notify_admin($order){
     $email = variable_get('site_mail', 'tmarshall@acromediainc.com');
   }
   $message = drupal_mail('acro_fraud', 'notice', $email, 'en',  false);
-  dpm($message, "message");
 }
 ?>
