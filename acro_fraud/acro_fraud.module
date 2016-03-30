@@ -232,7 +232,8 @@ function calc_po_box_risk($order_id) {
  * increase score depending on the amount of fraudulent orders.
  * @param $order_id $this order ID to load.
  */
-function calc_past_fraud_order_score($order_id){
+function calc_past_fraud_order_score($order_id)
+{
   $order = commerce_order_load($order_id);
   $matches = 0;
   $uid = $order->uid;
@@ -240,11 +241,23 @@ function calc_past_fraud_order_score($order_id){
 
   //Query to get all orders for $uid
   $result = db_select('commerce_order', 'co')
-      ->fields("co")
+      ->fields('co', array('order_id'))
       ->condition('uid', $uid, '=')
       ->execute()
       ->fetchAssoc();
-  dpm($result, "Query Result");
+
+  //We have all orders now for that customer.
+  //Time to check if any of them are fraudulent.
+  foreach ($result as $order_result) {
+    $oid = $order_result;
+    $fraud_result = db_select('commerce_order_fraud', 'cof')
+        ->fields('cof')
+        ->condition('order_id', $oid, '=')
+        ->countQuery()
+        ->execute()
+        ->fetchField();
+    $matches = $fraud_result;
+  }
 }
 
 /**
