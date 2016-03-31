@@ -836,13 +836,16 @@ function acro_fraud_commerce_order_update($order){
  * @param $order
  */
 function updateOrInsertCommerceRiskScore($order){
-  dpm($order, "order from insert");
   $record = [
     'order_id'=>$order->order_id,
     'risk_score'=>calc_risk_score($order->order_id),
   ];
+  //@Todo refactor to db_select query
   $exists = db_query('SELECT * FROM commerce_order_risk WHERE order_id=:oid',
   array(':oid'=>$order->order_id))->fetchField();
+
+  //If the record doesn't exist, we want to update the table
+  //@Todo add option for dynamic risk scores?
   if(!$exists){
     drupal_write_record('commerce_order_risk', $record);
   }
@@ -861,7 +864,8 @@ function get_commerce_risk_score($order){
       ->execute()
       ->fetchField();
   $risk_score = $result;
-  dpm($result, "Resutl");
+
+  //If the result failed, return 0
   if($risk_score == null){
     $risk_score = 0;
   }
