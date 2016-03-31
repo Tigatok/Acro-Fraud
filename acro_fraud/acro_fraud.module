@@ -88,7 +88,7 @@ function acro_fraud_form($form, &$form_state){
 
     $options[$order->order_id] = array(
       'order_id'=> $order->order_id,
-      'fraud_score'=>$fraud_score,
+      'fraud_score'=>get_commerce_risk_score($order),
     );
   }
   $header = array
@@ -837,6 +837,25 @@ function updateOrInsertCommerceRiskScore($order){
   if(!$exists){
     drupal_write_record('commerce_order_risk', $record);
   }
+}
+
+/**
+ * Grabs the risk score from the commerce_risk_table
+ * @param $order
+ * @return int the risk score to return, 0 if result was null
+ */
+function get_commerce_risk_score($order){
+  //Selects data field from commerce_orders where the order_id matches parameter 1
+  $result = db_select('commerce_order_risk', 'cor')
+      ->fields('cor', array('risk_score'))
+      ->condition('order_id', $order->order_id, '=')
+      ->execute()
+      ->fetchField();
+  $risk_score = $result;
+  if($risk_score == null){
+    $risk_score = 0;
+  }
+  return $risk_score;
 }
 
 /**
