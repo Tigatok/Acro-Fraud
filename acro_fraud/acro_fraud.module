@@ -142,12 +142,16 @@ function acro_fraud_enable() {
 }
 /**
  * Implements hook_submit().
+ *
+ * Submits the selected orders into the commerce_order_fraud table
  */
 function acro_fraud_submit($form, &$form_state){
   if(isset($form_state['values']['fraud_orders'])){
     foreach($form_state['values']['fraud_orders'] as $key => $value){
+
+      //Makes sure key==val, else the value will be 0
       if($value !== 0) {
-        // Score is not recalculated on presave -- should it?
+
         calc_risk_score($key, true);
 
       }
@@ -233,11 +237,13 @@ function calc_risk_score($order_id, $storing) {
       acro_fraud_insert_reason($order_id, $multi_s, 'multi_item');
   }
 
-  return $price_s + $po_s + $multi_s;
+  $past_fraud_match_factor = calc_past_fraud_order_score($order_id);
+  calc_past_cc_fraud_score($order_id) ;
+  dpm($past_fraud_match_factor, "past fraud match factor");
+  $risk_score = (($price_s + $po_s + $multi_s) * $past_fraud_match_factor )/2;
+  return $risk_score;
 }
-function acro_fraud_system_settings_submit() {
 
-}
 function acro_fraud_system_settings_form($form) {
   $form['actions']['#type'] = 'actions';
   $form['actions']['submit'] = array('#type' => 'submit', '#value' => t('Save configuration'));
@@ -384,12 +390,93 @@ function get_total_score($order_id) {
     return 0;
   return $total;
 }
-function get_score_for_reason($order_id, $reason) {
+function get_score_for_reason($order_id, $reason)
+{
   $total = db_query('SELECT risk_score FROM commerce_order_risk WHERE order_id = :oid AND reason = :r',
-      array(':oid' => $order_id, ':r' => $reason)) -> fetchField();
+      array(':oid' => $order_id, ':r' => $reason))->fetchField();
   if (empty($total))
     return 0;
   return $total;
+}
+/**
+ * check if any past orders are fraudulent
+ * increase score depending on the amount of fraudulent orders.
+ * @param $order_id $this order ID to load.
+ * @return int $this the amount of fraudulent matches
+ */
+function calc_past_fraud_order_score($order_id)
+{
+  $order = commerce_order_load($order_id);
+  $match_factor = 1;
+  $uid = $order->uid;
+
+  //Query to get all orders for $uid
+  $result = db_select('commerce_order', 'co')
+      ->fields('co', array('order_id'))
+      ->condition('uid', $uid, '=')
+      ->execute()
+      ->fetchAssoc();
+
+  //We have all orders now for that customer.
+  //Time to check if any of them are fraudulent.
+  foreach ($result as $order_result) {
+    $oid = $order_result;
+    $fraud_result = db_select('commerce_order_fraud', 'cof')
+        ->fields('cof')
+        ->condition('order_id', $oid, '=')
+        ->countQuery()
+        ->execute()
+        ->fetchField();
+    if($fraud_result != 0){
+      $match_factor = $fraud_result;
+    }
+  }
+
+  return $match_factor;
+}
+
+/**
+ * Finds all credit cards involved with a fraudulent order
+ * @todo find the non-example payment payment type
+ * @param $order_id
+ */
+function calc_past_cc_fraud_score($order_id){
+  $match_factor = 1;
+
+  //Selects data field from commerce_orders where the order_id matches parameter 1
+  $result = db_select('commerce_order', 'co')
+      ->fields('co', array('data'))
+      ->condition('order_id', $order_id, '=')
+      ->execute()
+      ->fetchAssoc();
+
+  //Grab the serialized data
+  $serialized_data = $result['data'];
+
+  //data is a serialized field in the database
+  $data = unserialize($serialized_data);
+
+  //Check to see if the payment information exists
+  if(isset($data['commerce_payment_example']['credit_card'])) {
+
+    //Grab the credit card from the array
+    $credit_card = $data['commerce_payment_example']['credit_card'];
+
+    //Grab credit number from array
+    $credit_card_number = $credit_card['number'];
+
+    //@Todo query all orders from teh fraud_table
+    //@Todo load the orders from the commerce_orders table
+    //@Todo un-serialize and check the credit card data
+
+    //Select all orders form the commerce_order_fraud table
+    $result = db_select('commerce_order_fraud', 'cof')
+        ->fields('cof', array('order_id'))
+        ->execute()
+        ->fetchAssoc();
+    dpm($result);
+  }
+
 }
 
 /**
@@ -785,7 +872,77 @@ function acro_fraud_views_data(){
       ),
   );
 
+  $data['commerce_order_fraud']['table']['group'] = t('Order Fraud');
+
+  // Define the base table
+  $data['commerce_order_fraud']['table']['base'] = array(
+    'field' => 'order_id', // This is the identifier field for the view.
+    'title' => t('Order Fraud'),
+    'help' => t('Contains fraudulent orders.'),
+    'weight' => -10,
+  );
+
+  // Join on commerce_order
+  $data['commerce_order_fraud']['table']['join'] = array(
+    // Index this array by the table name to which this table refers.
+    // 'left_field' is the primary key in the referenced table.
+    // 'field' is the foreign key in this table.
+    'commerce_order' => array(
+      'left_field' => 'order_id',
+      'field' => 'order_id',
+    ),
+  );
+
+
+  // Order ID table field.
+  $data['commerce_order_fraud']['order_id'] = array(
+    'title' => t('Order ID'),
+    'help' => t('The ID of an Order'),
+    // Define a relationship
+    'relationship' => array(
+      'base' => 'commerce_order', // The name of the table to join with.
+      'base field' => 'order_id', // The name of the field on the joined table.
+      'handler' => 'views_handler_relationship',
+      'label' => t('Fraudulent orders'),
+      'title' => t('Fraudulent Orders'),
+      'help' => t('Shows orders that have been marked fraudulent'),
+    ),
+  );
+
+
   return $data;
+}
+
+/**
+ * Implements hook_views_pre_view().
+ *
+ * Add order_risk relationship & risk_score field. Add Views Bulk Operations for statuses.
+ */
+function acro_fraud_views_pre_view(&$view, &$display_id, &$args) {
+  if ($view->name == 'commerce_backoffice_orders') {
+    $view->add_item($view->current_display, 'relationship', 'commerce_order_risk', 'order_id', array(
+      'label' => '',
+    ), 'order_risk');
+    $view->add_item($view->current_display, 'field', 'commerce_order_risk', 'risk_score', array(
+      'label' => 'Risk Score',
+    ), 'risk_score');
+
+    $view->display_handler->default_display->options['fields']['views_bulk_operations']['vbo_operations']['rules_component::rules_commerce_order_status_fraudulent'] = array(
+      'selected' => 1,
+      'postpone_processing' => 0,
+      'skip_confirmation' => 0,
+      'override_label' => 0,
+      'label' => '',
+    );
+    $view->display_handler->default_display->options['fields']['views_bulk_operations']['vbo_operations']['rules_component::rules_commerce_order_status_high_risk'] = array(
+      'selected' => 1,
+      'postpone_processing' => 0,
+      'skip_confirmation' => 0,
+      'override_label' => 0,
+      'label' => '',
+    );
+
+  }
 }
 
 /**
@@ -810,18 +967,49 @@ function acro_fraud_commerce_order_status_info(){
 
 /**
  * Implements hook_commerce_order_presave().
+ * Check order status' to see if they have changed to or from fraudulent
+ * Update commerce_order_fraud respectively.
+ *
+ * Also, assign the order a risk score based on the current order.
+ *
+ * @param $order
+ * @throws Exception
  */
 function acro_fraud_commerce_order_presave($order) {
-  drupal_set_message("Chicken");
-  if ($order->status == $order->original->status) {} //If the status hasn't changed do nothing
-  else if ($order->status == 'fraudulent'){
-    //New status is fraudulent. Add to fraud table.
+  if(isset($order->original)){
+    if ($order->status == $order->original->status) {
+      return;
+    }
+    //If the original status was fraudulent delete
+    if ($order->original->status == 'fraudulent' && $order->status != "fraudulent"){
+      db_delete('commerce_order_fraud')->condition('order_id', $order->order_id)->execute();
+      return;
+    }
+  }
+  //If the new status is fraudulent, add
+  if ($order->status == 'fraudulent'){
     db_insert('commerce_order_fraud')->fields(array('order_id' => $order->order_id))->execute();
+    //Notify the admin of a new fraudulent order.
     notify_admin($order);
   }
-  else if ($order->original->status == 'fraudulent'){
-    //Old status is fraudulent. Remove from fraud table.
-    db_delete('commerce_order_fraud')->condition('order_id', $order->order_id)->execute();
+
+  //Update the riskScore for the order
+  updateOrInsertCommerceRiskScore($order);
+}
+
+/**
+ * If the order doesn't exist in commerce_order_risk, insert the risk_score calculated.
+ * @param $order
+ */
+function updateOrInsertCommerceRiskScore($order){
+  $record = [
+    'order_id'=>$order->order_id,
+    'risk_score'=>calc_risk_score($order->order_id),
+  ];
+  $exists = db_query('SELECT * FROM commerce_order_risk WHERE order_id=:oid',
+  array(':oid'=>$order->order_id))->fetchField();
+  if(!$exists){
+    drupal_write_record('commerce_order_risk', $record);
   }
   // Calculate the score here and store the results
   calc_risk_score($order->order_id, true);
@@ -832,12 +1020,42 @@ function acro_fraud_commerce_order_presave($order) {
  * @param $order
  */
 function notify_admin($order){
-//  if(variable_get('developer_settings')){
-//    $email = 'tmarshall@acromediainc.com';
-//  } else {
-//    $email = variable_get('site_mail', 'tmarshall@acromediainc.com');
-//  }
-//  $message = drupal_mail('acro_fraud', 'notice', $email, 'en',  false);
-//  dpm($message, "message");
+
+  if(variable_get('developer_settings')){
+    $email = 'tmarshall@acromediainc.com';
+  } else {
+    $email = variable_get('site_mail', 'tmarshall@acromediainc.com');
+  }
+  $message = drupal_mail('acro_fraud', 'notice', $email, 'en',  false);
+}
+/**
+ * Implements hook_default_rules_configuration().
+ */
+function acro_fraud_default_rules_configuration(){
+  // Set order status : High Risk
+  $rules['rules_commerce_order_status_high_risk'] = entity_import('rules_config', '{ "rules_commerce_order_status_high_risk" : {
+      "LABEL" : "Set order status : High Risk (Pending)",
+      "PLUGIN" : "action set",
+      "REQUIRES" : [ "commerce_order" ],
+      "USES VARIABLES" : { "order" : { "label" : "Order", "type" : "commerce_order" } },
+      "ACTION SET" : [
+        { "commerce_order_update_status" : { "commerce_order" : [ "order" ], "order_status" : "high_risk" } }
+      ]
+    }
+  }');
+  // Set order status : Fraudulent
+  $rules['rules_commerce_order_status_fraudulent'] = entity_import('rules_config', '{ "rules_commerce_order_status_fraudulent" : {
+      "LABEL" : "Set order status : Fraudulent (Canceled)",
+      "PLUGIN" : "action set",
+      "REQUIRES" : [ "commerce_order" ],
+      "USES VARIABLES" : { "order" : { "label" : "Order", "type" : "commerce_order" } },
+      "ACTION SET" : [
+        { "commerce_order_update_status" : { "commerce_order" : [ "order" ], "order_status" : "fraudulent" } }
+      ]
+    }
+  }');
+
+  return $rules;
+
 }
 ?>
