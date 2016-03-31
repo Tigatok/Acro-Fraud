@@ -819,6 +819,14 @@ function acro_fraud_commerce_order_presave($order) {
     notify_admin($order);
   }
 
+}
+
+/**
+ * Implements hook_entity_update
+ * Updates the commerce_order_risk table once the entity has been saved, i.e., on update
+ * @param $order
+ */
+function acro_fraud_commerce_order_update($order){
   //Update the riskScore for the order
   updateOrInsertCommerceRiskScore($order);
 }
@@ -828,6 +836,7 @@ function acro_fraud_commerce_order_presave($order) {
  * @param $order
  */
 function updateOrInsertCommerceRiskScore($order){
+  dpm($order, "order from insert");
   $record = [
     'order_id'=>$order->order_id,
     'risk_score'=>calc_risk_score($order->order_id),
@@ -852,6 +861,7 @@ function get_commerce_risk_score($order){
       ->execute()
       ->fetchField();
   $risk_score = $result;
+  dpm($result, "Resutl");
   if($risk_score == null){
     $risk_score = 0;
   }
