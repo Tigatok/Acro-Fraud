@@ -791,16 +791,17 @@ function acro_fraud_commerce_order_status_info(){
  * @throws Exception
  */
 function acro_fraud_commerce_order_presave($order) {
-  dpm($order, "order");
   if(isset($order->original)){
     //Old status is fraudulent. Remove from fraud table.
     if ($order->status == $order->original->status) {
       return;
     }
+    //If the original status was fraudulent delete
     if ($order->original->status == 'fraudulent'){
       db_delete('commerce_order_fraud')->condition('order_id', $order->order_id)->execute();
     }
   }
+  //If the new status is fraudulent, add
   if ($order->status == 'fraudulent'){
     //New status is fraudulent. Add to fraud table.
     db_insert('commerce_order_fraud')->fields(array('order_id' => $order->order_id))->execute();
