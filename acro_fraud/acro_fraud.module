@@ -78,10 +78,12 @@ function acro_fraud_form($form, &$form_state){
     ->execute()
     ->fetchAssoc();
     $fraud_score=$result['risk_score'];
+
+    // If the order doesn't have a score yet, calculate it now
     if($fraud_score == ''){
-      // If the order doesn't have a score yet, calculate it now
       $fraud_score = calc_risk_score($order->order_id);
     }
+    calc_risk_score($order->order_id);
 
     $options[$order->order_id] = array(
       'order_id'=> $order->order_id,
@@ -162,6 +164,7 @@ function calc_risk_score($order_id) {
 
   $po_s = calc_po_box_risk($order_id);
   $past_fraud_match_factor = calc_past_fraud_order_score($order_id);
+  calc_past_cc_fraud_score($order_id);
   return (($price_s + $po_s) * $past_fraud_match_factor )/2;
 }
 
@@ -230,7 +233,6 @@ function calc_past_fraud_order_score($order_id)
   $order = commerce_order_load($order_id);
   $match_factor = 1;
   $uid = $order->uid;
-  dpm($order->uid);
 
   //Query to get all orders for $uid
   $result = db_select('commerce_order', 'co')
@@ -253,6 +255,42 @@ function calc_past_fraud_order_score($order_id)
   }
 
   return $match_factor;
+}
+
+/**
+ * Finds all credit cards involved with a fraudulent order
+ * @todo find the non-example payment payment type
+ * @param $order_id
+ */
+function calc_past_cc_fraud_score($order_id){
+  $match_factor = 1;
+
+  //Selects data field from commerce_orders where the order_id matches parameter 1
+  $result = db_select('commerce_order', 'co')
+      ->fields('co', array('data'))
+      ->condition('order_id', $order_id, '=')
+      ->execute()
+      ->fetchAssoc();
+
+  //Grab the serialized data
+  $serialized_data = $result['data'];
+
+  //data is a serialized field in the database
+  $data = unserialize($serialized_data);
+
+  //Check to see if the payment information exists
+  if(isset($data['commerce_payment_example']['credit_card'])) {
+
+    //Grab the credit card from the array
+    $credit_card = $data['commerce_payment_example']['credit_card'];
+
+    //Grab credit number from array
+    $credit_card_number = $credit_card['number'];
+
+    //@Todo query all orders from teh fraud_table
+    //@Todo load the orders from the commerce_orders table
+    //@Todo un-serialize and check the credit card data
+  }
 }
 
 /**
