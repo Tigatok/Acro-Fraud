@@ -166,7 +166,6 @@ function calc_risk_score($order_id) {
   $po_s = calc_po_box_risk($order_id);
   $past_fraud_match_factor = calc_past_fraud_order_score($order_id);
   calc_past_cc_fraud_score($order_id) ;
-  dpm($past_fraud_match_factor, "past fraud match factor");
   $risk_score = (($price_s + $po_s) * $past_fraud_match_factor )/2;
   return $risk_score;
 }
