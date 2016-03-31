@@ -161,11 +161,19 @@ function acro_fraud_submit($form, &$form_state){
  * An order with no detectable risk will be given a zero.
  */
 function calc_risk_score($order_id) {
+  //calculate the risk from the price
   $price_s = calc_price_risk($order_id, variable_get('threshold', 10000));
 
+  //Calculate the post office box risk
   $po_s = calc_po_box_risk($order_id);
+
+  //Calculate the past customer fraud score
   $past_fraud_match_factor = calc_past_fraud_order_score($order_id);
+
+  //Calculate past credit card fraud
   calc_past_cc_fraud_score($order_id) ;
+
+  //@Todo make this better?
   $risk_score = (($price_s + $po_s) * $past_fraud_match_factor )/2;
   return $risk_score;
 }
