@@ -83,6 +83,7 @@ function acro_fraud_form($form, &$form_state){
     if($fraud_score == ''){
       $fraud_score = calc_risk_score($order->order_id);
     }
+    //@Todo Development remove for live
     calc_risk_score($order->order_id);
 
     $options[$order->order_id] = array(
@@ -113,22 +114,26 @@ function acro_fraud_form($form, &$form_state){
 
 /**
  * Implements hook_submit().
+ *
+ * Submits the selected orders into the commerce_order_fraud table
  */
 function acro_fraud_submit($form, &$form_state){
   if(isset($form_state['values']['fraud_orders'])){
     foreach($form_state['values']['fraud_orders'] as $key => $value){
+
+      //Makes sure key==val, else the value will be 0
       if($value !== 0) {
         //Insert into DB here.
         $record = [
             'order_id' => $key,
-            'risk_score' => calc_risk_score($key),
+//            'risk_score' => calc_risk_score($key),
         ];
         // Check if the record exists and update or insert it as appropriate
-        $exists = db_query('SELECT * from commerce_order_risk WHERE order_id = :oid',
+        $exists = db_query('SELECT * from commerce_order_fraud WHERE order_id = :oid',
             array(':oid' => $key))->fetchField();
         if (!$exists) {
-          drupal_write_record('commerce_order_risk', $record);
-          drupal_set_message('Risk Score Entered.', 'status');//'Risk Score Updated.'
+          drupal_write_record('commerce_order_fraud', $record);
+          drupal_set_message('Order submitted to commerce_order_fraud table', 'status');//'Risk Score Updated.'
         }
       }
     }
@@ -161,8 +166,8 @@ function calc_risk_score($order_id) {
   $po_s = calc_po_box_risk($order_id);
   $past_fraud_match_factor = calc_past_fraud_order_score($order_id);
   calc_past_cc_fraud_score($order_id) ;
+  dpm($past_fraud_match_factor, "past fraud match factor");
   $risk_score = (($price_s + $po_s) * $past_fraud_match_factor )/2;
-  dpm($risk_score , "rs ");
   return $risk_score;
 }
 
@@ -249,7 +254,9 @@ function calc_past_fraud_order_score($order_id)
         ->countQuery()
         ->execute()
         ->fetchField();
-    $match_factor = $fraud_result;
+    if($fraud_result != 0){
+      $match_factor = $fraud_result;
+    }
   }
 
   return $match_factor;
@@ -786,26 +793,49 @@ function acro_fraud_commerce_order_status_info(){
 
 /**
  * Implements hook_commerce_order_presave().
- * @todo Steve/Dylan - Can you double check this?
+ * Check order status' to see if they have changed to or from fraudulent
+ * Update commerce_order_fraud respectively.
+ *
+ * Also, assign the order a risk score based on the current order.
+ *
  * @param $order
  * @throws Exception
  */
 function acro_fraud_commerce_order_presave($order) {
   if(isset($order->original)){
-    //Old status is fraudulent. Remove from fraud table.
     if ($order->status == $order->original->status) {
       return;
     }
     //If the original status was fraudulent delete
-    if ($order->original->status == 'fraudulent'){
+    if ($order->original->status == 'fraudulent' && $order->status != "fraudulent"){
       db_delete('commerce_order_fraud')->condition('order_id', $order->order_id)->execute();
+      return;
     }
   }
   //If the new status is fraudulent, add
   if ($order->status == 'fraudulent'){
-    //New status is fraudulent. Add to fraud table.
     db_insert('commerce_order_fraud')->fields(array('order_id' => $order->order_id))->execute();
+    //Notify the admin of a new fraudulent order.
     notify_admin($order);
+  }
+
+  //Update the riskScore for the order
+  updateOrInsertCommerceRiskScore($order);
+}
+
+/**
+ * If the order doesn't exist in commerce_order_risk, insert the risk_score calculated.
+ * @param $order
+ */
+function updateOrInsertCommerceRiskScore($order){
+  $record = [
+    'order_id'=>$order->order_id,
+    'risk_score'=>calc_risk_score($order->order_id),
+  ];
+  $exists = db_query('SELECT * FROM commerce_order_risk WHERE order_id=:oid',
+  array(':oid'=>$order->order_id))->fetchField();
+  if(!$exists){
+    drupal_write_record('commerce_order_risk', $record);
   }
 }
 
