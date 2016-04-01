@@ -172,11 +172,15 @@ function calc_risk_score($order_id) {
   $past_fraud_match_factor = calc_past_fraud_order_score($order_id);
 
   //Calculate past credit card fraud
-  calc_past_cc_fraud_score($order_id) ;
+  $past_fraud_credit_card_number_factor = calc_past_cc_fraud_score($order_id) ;
 
   //@Todo make this better?
-  $risk_score = (($price_s + $po_s) * $past_fraud_match_factor )/2;
-  return $risk_score;
+  //Breakdown: price_risk_score and post_office_score are lower and probably more often
+  //if the customer has been involved with a fraudulent order before thats a pretty big deal, so multiply
+  //If the credit card used has been in a fraudulent order before, thats a bigger deal so multiply by 2
+  //Divide total score by 2 for no real reason other than to keep the numbers lower.
+  $risk_score = (($price_s + $po_s) * $past_fraud_match_factor + ($past_fraud_credit_card_number_factor*2))/2;
+  return ceil($risk_score);
 }
 
 /**
@@ -276,6 +280,7 @@ function calc_past_fraud_order_score($order_id)
  * Finds all credit cards involved with a fraudulent order
  * @todo find the non-example payment payment type
  * @param $order_id
+ * @return int
  */
 function calc_past_cc_fraud_score($order_id){
   $match_factor = 1;
@@ -313,9 +318,33 @@ function calc_past_cc_fraud_score($order_id){
         ->execute()
         ->fetchAssoc();
     foreach($result as $order_id){
+      //loads the commerce order from the id
       $commerce_order = commerce_order_load($order_id);
+
+      //grabs the serialized data from commerce_order
       $commerce_order_data = $commerce_order['data'];
+
+      //Unserializes the data so we can read it.
+      $unserialized_data = unserialize($commerce_order_data);
+
+      //Checks to see that there is a commerce_payment_example credit_card
+      //@todo again, make sure when live gets on, we aren't using an example commerce_payment_example credit_card
+      if(isset($unserialized_data['commerce_payment_example']['credit_card'])) {
+
+        //loads the credit card from the unserialized_data
+        $fraud_order_credit_card = $unserialized_data['commerce_payment_example']['credit_card'];
+
+        //Grabs the number from the credit card
+        $fraud_order_credit_card_number = $fraud_order_credit_card['number'];
+
+        //If we've found a matching credit card number in a fraudulent order,
+        //increase the match_factor by 1
+        if($credit_card_number == $fraud_order_credit_card_number){
+          $match_factor++;
+        }
+      }
     }
+    return $match_factor;
   }
 }
 
