@@ -9,9 +9,9 @@ function acro_fraud_schema() {
 	  'fields' => array(
 	    'order_id'=> array('type' => 'int', 'length' => 10, 'not null' => TRUE),
       'risk_score' => array('type' => 'int', 'length' => 10, 'not null' => TRUE),
-      'reason' => array('type' => 'varchar', 'length' => 100, 'not null' => FALSE),
+      'reason' => array('type' => 'varchar', 'length' => 100, 'not null' => TRUE),
     ),
-    'primary key' => array('order_id'),
+    'primary key' => array('order_id', 'reason'),
   );
   $schema['commerce_order_fraud'] = array(
     'description' => 'The table containing orders marked as fraudulent',
