@@ -224,6 +224,7 @@ function update_score_for_reason($order_id, $reason, $score) {
 function calc_risk_score($order_id, $storing) {
   $price_s = calc_price_risk($order_id);
 
+  //Calculate the post office box risk
   $po_s = calc_po_box_risk($order_id);
 
   $multi_s = calc_multi_item_risk($order_id);
@@ -237,11 +238,19 @@ function calc_risk_score($order_id, $storing) {
       acro_fraud_insert_reason($order_id, $multi_s, 'multi_item');
   }
 
+  //Calculate the past customer fraud score
   $past_fraud_match_factor = calc_past_fraud_order_score($order_id);
-  calc_past_cc_fraud_score($order_id) ;
-  dpm($past_fraud_match_factor, "past fraud match factor");
-  $risk_score = (($price_s + $po_s + $multi_s) * $past_fraud_match_factor )/2;
-  return $risk_score;
+
+  //Calculate past credit card fraud
+  $past_fraud_credit_card_number_factor = calc_past_cc_fraud_score($order_id) ;
+
+  //@Todo make this better?
+  //Breakdown: price_risk_score and post_office_score are lower and probably more often
+  //if the customer has been involved with a fraudulent order before thats a pretty big deal, so multiply
+  //If the credit card used has been in a fraudulent order before, thats a bigger deal so multiply by 2
+  //Divide total score by 2 for no real reason other than to keep the numbers lower.
+  $risk_score = (($price_s + $po_s + $multi_s) * $past_fraud_match_factor + ($past_fraud_credit_card_number_factor*2))/2;
+  return ceil($risk_score);
 }
 
 function acro_fraud_system_settings_form($form) {
@@ -308,8 +317,9 @@ function recalc_all_scores() {
  * is twice the acceptable value.
  *
  * @param $order_id
- * @param $price_min
+ * @param $price_max
  * @return float|int
+ * @internal param $price_min
  */
 function calc_price_risk($order_id) {
   $price_max = variable_get('threshold', 10000);
@@ -439,6 +449,7 @@ function calc_past_fraud_order_score($order_id)
  * Finds all credit cards involved with a fraudulent order
  * @todo find the non-example payment payment type
  * @param $order_id
+ * @return int
  */
 function calc_past_cc_fraud_score($order_id){
   $match_factor = 1;
@@ -457,6 +468,7 @@ function calc_past_cc_fraud_score($order_id){
   $data = unserialize($serialized_data);
 
   //Check to see if the payment information exists
+  //@todo replace with non commerce_payment_example
   if(isset($data['commerce_payment_example']['credit_card'])) {
 
     //Grab the credit card from the array
@@ -474,7 +486,34 @@ function calc_past_cc_fraud_score($order_id){
         ->fields('cof', array('order_id'))
         ->execute()
         ->fetchAssoc();
-    dpm($result);
+    foreach($result as $order_id){
+      //loads the commerce order from the id
+      $commerce_order = commerce_order_load($order_id);
+
+      //grabs the serialized data from commerce_order
+      $commerce_order_data = $commerce_order['data'];
+
+      //Unserializes the data so we can read it.
+      $unserialized_data = unserialize($commerce_order_data);
+
+      //Checks to see that there is a commerce_payment_example credit_card
+      //@todo again, make sure when live gets on, we aren't using an example commerce_payment_example credit_card
+      if(isset($unserialized_data['commerce_payment_example']['credit_card'])) {
+
+        //loads the credit card from the unserialized_data
+        $fraud_order_credit_card = $unserialized_data['commerce_payment_example']['credit_card'];
+
+        //Grabs the number from the credit card
+        $fraud_order_credit_card_number = $fraud_order_credit_card['number'];
+
+        //If we've found a matching credit card number in a fraudulent order,
+        //increase the match_factor by 1
+        if($credit_card_number == $fraud_order_credit_card_number){
+          $match_factor++;
+        }
+      }
+    }
+    return $match_factor;
   }
 
 }
@@ -993,6 +1032,14 @@ function acro_fraud_commerce_order_presave($order) {
     notify_admin($order);
   }
 
+}
+
+/**
+ * Implements hook_entity_update
+ * Updates the commerce_order_risk table once the entity has been saved, i.e., on update
+ * @param $order
+ */
+function acro_fraud_commerce_order_update($order){
   //Update the riskScore for the order
   updateOrInsertCommerceRiskScore($order);
 }
@@ -1006,13 +1053,38 @@ function updateOrInsertCommerceRiskScore($order){
     'order_id'=>$order->order_id,
     'risk_score'=>calc_risk_score($order->order_id),
   ];
+  //@Todo refactor to db_select query
   $exists = db_query('SELECT * FROM commerce_order_risk WHERE order_id=:oid',
   array(':oid'=>$order->order_id))->fetchField();
+
+  //If the record doesn't exist, we want to update the table
+  //@Todo add option for dynamic risk scores?
   if(!$exists){
     drupal_write_record('commerce_order_risk', $record);
   }
   // Calculate the score here and store the results
   calc_risk_score($order->order_id, true);
+}
+
+/**
+ * Grabs the risk score from the commerce_risk_table
+ * @param $order
+ * @return int the risk score to return, 0 if result was null
+ */
+function get_commerce_risk_score($order){
+  //Selects data field from commerce_orders where the order_id matches parameter 1
+  $result = db_select('commerce_order_risk', 'cor')
+      ->fields('cor', array('risk_score'))
+      ->condition('order_id', $order->order_id, '=')
+      ->execute()
+      ->fetchField();
+  $risk_score = $result;
+
+  //If the result failed, return 0
+  if($risk_score == null){
+    $risk_score = 0;
+  }
+  return $risk_score;
 }
 
 /**
