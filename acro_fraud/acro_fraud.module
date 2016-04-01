@@ -247,7 +247,6 @@ function calc_po_box_risk($order_id) {
 function calc_past_fraud_order_score($order_id)
 {
   $order = commerce_order_load($order_id);
-  dpm($order, "ppo");
   $match_factor = 1;
   $uid = $order->uid;
 
