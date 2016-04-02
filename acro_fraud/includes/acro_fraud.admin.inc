@@ -45,8 +45,7 @@ $form['threshold_settings']['multi_item'] = array(
         '#description'=>t("Enable this if you enable developer mode. This will break some functions of the module."),
         '#default_value'=>variable_get('developer_settings',false),
     ];
-    // Add custom submit handler
-//    $form['#submit'][] = 'acro_fraud_system_settings_submit';
+
     return acro_fraud_system_settings_form($form);
 }
 
