@@ -103,21 +103,6 @@ function acro_fraud_form($form, &$form_state){
       );
       $item_name = $order->order_id;
 
-//    $form[$item_name] = array(
-//        '#type' => 'item', // Wrap the table in type item
-//        '#title' => 'Order ID '.$item_name,
-//        '#tree' => TRUE,
-////        'submissions' => array(
-////          '#type' => 'tableselect',
-////            '#header' => $header,
-////          '#options' => $options[$order->order_id],
-////        ),
-//        'submissions' => array(
-//            '#theme' => 'table',
-//            '#header' => $header,
-//            '#rows' => $options[$order->order_id],
-//        ),
-//    );
       $dv[$item_name] = FALSE;
       $form[$item_name] = array(
           '#type' => 'item', // Wrap the table in type item
@@ -164,24 +149,11 @@ function acro_fraud_submit($form, &$form_state){
       if($value !== 0) {
         // Score is not recalculated on presave -- should it?
         calc_risk_score($key, true);
-//        $record = [
-//            'order_id' => $key,
-//            'risk_score' => calc_risk_score($key),
-//            'reason' => 'REASON1',
-//        ];
+
       }
     }
   }
-  // Inserts if MARK AS FRAUD is clicked
-//  if(isset($form_state['values'])) {
-//    $record = [
-//        'order_id' => 99,
-//        'risk_score' => 1,
-//        'reason' => 'SECRET REASON',
-//    ];
-//
-//      drupal_write_record('commerce_order_risk', $record);
-//  }
+
 }
 /**
  * Constants which are the defaults for the minimum values
@@ -214,7 +186,6 @@ function acro_fraud_insert_reason($order_id, $score, $reason) {
       array(':oid' => $order_id, ':r' => $reason))->fetchField();
   if (!$exists) {
     drupal_write_record('commerce_order_risk', $record);
-    //drupal_set_message($reason . 'NOT EXISTS', 'status');
   }
   else {
     // If the record already exists update where necessary
@@ -265,7 +236,7 @@ function calc_risk_score($order_id, $storing) {
   return $price_s + $po_s + $multi_s;
 }
 function acro_fraud_system_settings_submit() {
-  drupal_set_message('CUSTOM HOOK WUBALUBADUBDUB', 'status');
+
 }
 function acro_fraud_system_settings_form($form) {
   $form['actions']['#type'] = 'actions';
