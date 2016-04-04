@@ -72,6 +72,8 @@ function acro_fraud_form($form, &$form_state){
     'price' => 'Price',
       'pobox' => 'PO Box',
       'multi_item' => 'Quantity',
+      'past_fraud_match_factor' => 'Past Fraud Match Factor',
+      'past_fraud_credit_card_number_factor' => 'Past Fraud Credit Card Number Factor',
   );
   $header = array
   (
@@ -188,13 +190,16 @@ function acro_fraud_insert_reason($order_id, $score, $reason) {
   // Check if the record exists and update or insert it as appropriate
   $exists = db_query('SELECT 1 from commerce_order_risk WHERE order_id = :oid AND reason = :r',
       array(':oid' => $order_id, ':r' => $reason))->fetchField();
-  if (!$exists) {
+  if (!$exists && $score > 0) {
     drupal_write_record('commerce_order_risk', $record);
   }
   else {
     // If the record already exists update where necessary
     if (get_score_for_reason($order_id, $reason) != $score) {
-      update_score_for_reason($order_id, $reason, $score);
+      if ($score > 0) // Only store scores greater than zero, delete the rest
+        update_score_for_reason($order_id, $reason, $score);
+      else
+        delete_score_for_reason($order_id, $reason);
     }
   }
   return !$exists; // Returns the success of the record being inserted.
@@ -210,6 +215,14 @@ function update_score_for_reason($order_id, $reason, $score) {
 
   return $num_updated;
 }
+function delete_score_for_reason($order_id, $reason) {
+  $num_deleted = db_delete('commerce_order_risk')
+      ->condition('order_id', $order_id, '=')
+      ->condition('reason', $reason, '=')
+      ->execute();
+
+  return $num_deleted;
+}
 /**
  * Calculates the risk score for an order.
  *
@@ -222,6 +235,8 @@ function update_score_for_reason($order_id, $reason, $score) {
  * with the associated reason in the risk table.
  */
 function calc_risk_score($order_id, $storing) {
+  //@Todo Determine best minimum for past fraud cc and past fraud customer
+  $MIN_PAST_FRAUD_FACTOR = 8;
   $price_s = calc_price_risk($order_id);
 
   //Calculate the post office box risk
@@ -229,27 +244,39 @@ function calc_risk_score($order_id, $storing) {
 
   $multi_s = calc_multi_item_risk($order_id);
 
-  if ($storing) {
-    if ($price_s > 0)
-      acro_fraud_insert_reason($order_id, $price_s, 'price');
-    if ($po_s > 0)
-      acro_fraud_insert_reason($order_id, $po_s, 'pobox');
-    if ($multi_s > 0)
-      acro_fraud_insert_reason($order_id, $multi_s, 'multi_item');
-  }
+  // Will act as a multiplier for the past fraud scores
+  $partial_score = $price_s + $po_s + $multi_s;
 
   //Calculate the past customer fraud score
-  $past_fraud_match_factor = calc_past_fraud_order_score($order_id);
+  //Past customer fraud score adds another set of $partial_score
+  //and cannot be lower than $PAST_FRAUD_FACTOR
+  $past_fraud_match_factor = calc_past_fraud_order_score($order_id) * $partial_score;
+  if ($past_fraud_match_factor)
+    $past_fraud_match_factor = $past_fraud_match_factor < $MIN_PAST_FRAUD_FACTOR ? $MIN_PAST_FRAUD_FACTOR : $past_fraud_match_factor;
 
   //Calculate past credit card fraud
-  $past_fraud_credit_card_number_factor = calc_past_cc_fraud_score($order_id) ;
+  //Past credit card fraud score will add another set of $partial_score
+  //and cannot be lower than $PAST_FRAUD_FACTOR
+  $past_fraud_credit_card_number_factor = calc_past_cc_fraud_score($order_id) * $partial_score;
+  if ($past_fraud_credit_card_number_factor)
+    $past_fraud_credit_card_number_factor =
+        $past_fraud_credit_card_number_factor < $MIN_PAST_FRAUD_FACTOR ? $MIN_PAST_FRAUD_FACTOR : $past_fraud_credit_card_number_factor;
+
+  if ($storing) {
+      acro_fraud_insert_reason($order_id, $price_s, 'price');
+      acro_fraud_insert_reason($order_id, $po_s, 'pobox');
+      acro_fraud_insert_reason($order_id, $multi_s, 'multi_item');
+      acro_fraud_insert_reason($order_id, $past_fraud_match_factor, 'past_fraud_match_factor');
+      acro_fraud_insert_reason($order_id, $past_fraud_credit_card_number_factor, 'past_fraud_credit_card_number_factor');
+  }
+
 
   //@Todo make this better?
   //Breakdown: price_risk_score and post_office_score are lower and probably more often
-  //if the customer has been involved with a fraudulent order before thats a pretty big deal, so multiply
-  //If the credit card used has been in a fraudulent order before, thats a bigger deal so multiply by 2
-  //Divide total score by 2 for no real reason other than to keep the numbers lower.
-  $risk_score = (($price_s + $po_s + $multi_s) * $past_fraud_match_factor + ($past_fraud_credit_card_number_factor*2))/2;
+  //Past scores are a function of the partial score (summation of pobox, price, and multi_item reason scores)
+  //and can be added onto the total
+  $risk_score = $partial_score + $past_fraud_match_factor + $past_fraud_credit_card_number_factor;
+
   return ceil($risk_score);
 }
 
@@ -417,7 +444,7 @@ function get_score_for_reason($order_id, $reason)
 function calc_past_fraud_order_score($order_id)
 {
   $order = commerce_order_load($order_id);
-  $match_factor = 1;
+  $match_factor = 0;
   $uid = $order->uid;
 
   //Query to get all orders for $uid
@@ -452,7 +479,7 @@ function calc_past_fraud_order_score($order_id)
  * @return int
  */
 function calc_past_cc_fraud_score($order_id){
-  $match_factor = 1;
+  $match_factor = 0;
 
   //Selects data field from commerce_orders where the order_id matches parameter 1
   $result = db_select('commerce_order', 'co')
@@ -491,10 +518,10 @@ function calc_past_cc_fraud_score($order_id){
       $commerce_order = commerce_order_load($order_id);
 
       //grabs the serialized data from commerce_order
-      $commerce_order_data = $commerce_order['data'];
+      //$commerce_order_data = $commerce_order['data'];
+      $commerce_order_data = $commerce_order->data;
 
-      //Unserializes the data so we can read it.
-      $unserialized_data = unserialize($commerce_order_data);
+      $unserialized_data = $commerce_order_data;
 
       //Checks to see that there is a commerce_payment_example credit_card
       //@todo again, make sure when live gets on, we aren't using an example commerce_payment_example credit_card
