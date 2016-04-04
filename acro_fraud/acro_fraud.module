@@ -199,7 +199,7 @@ function acro_fraud_insert_reason($order_id, $score, $reason) {
       if ($score > 0) // Only store scores greater than zero, delete the rest
         update_score_for_reason($order_id, $reason, $score);
       else
-        delete_score_for_reason($order_id, $reason, $score);
+        delete_score_for_reason($order_id, $reason);
     }
   }
   return !$exists; // Returns the success of the record being inserted.
@@ -215,7 +215,7 @@ function update_score_for_reason($order_id, $reason, $score) {
 
   return $num_updated;
 }
-function delete_score_for_reason($order_id, $reason, $score) {
+function delete_score_for_reason($order_id, $reason) {
   $num_deleted = db_delete('commerce_order_risk')
       ->condition('order_id', $order_id, '=')
       ->condition('reason', $reason, '=')
@@ -235,7 +235,8 @@ function delete_score_for_reason($order_id, $reason, $score) {
  * with the associated reason in the risk table.
  */
 function calc_risk_score($order_id, $storing) {
-  $PAST_FRAUD_FACTOR = 8;
+  //@Todo Determine best minimum for past fraud cc and past fraud customer
+  $MIN_PAST_FRAUD_FACTOR = 8;
   $price_s = calc_price_risk($order_id);
 
   //Calculate the post office box risk
@@ -251,7 +252,7 @@ function calc_risk_score($order_id, $storing) {
   //and cannot be lower than $PAST_FRAUD_FACTOR
   $past_fraud_match_factor = calc_past_fraud_order_score($order_id) * $partial_score;
   if ($past_fraud_match_factor)
-    $past_fraud_match_factor = $past_fraud_match_factor < $PAST_FRAUD_FACTOR ? $PAST_FRAUD_FACTOR : $past_fraud_match_factor;
+    $past_fraud_match_factor = $past_fraud_match_factor < $MIN_PAST_FRAUD_FACTOR ? $MIN_PAST_FRAUD_FACTOR : $past_fraud_match_factor;
 
   //Calculate past credit card fraud
   //Past credit card fraud score will add another set of $partial_score
@@ -259,7 +260,7 @@ function calc_risk_score($order_id, $storing) {
   $past_fraud_credit_card_number_factor = calc_past_cc_fraud_score($order_id) * $partial_score;
   if ($past_fraud_credit_card_number_factor)
     $past_fraud_credit_card_number_factor =
-        $past_fraud_credit_card_number_factor < $PAST_FRAUD_FACTOR ? $PAST_FRAUD_FACTOR : $past_fraud_credit_card_number_factor;
+        $past_fraud_credit_card_number_factor < $MIN_PAST_FRAUD_FACTOR ? $MIN_PAST_FRAUD_FACTOR : $past_fraud_credit_card_number_factor;
 
   if ($storing) {
       acro_fraud_insert_reason($order_id, $price_s, 'price');
