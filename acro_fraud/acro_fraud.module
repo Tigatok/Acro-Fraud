@@ -500,6 +500,31 @@ function calc_past_fraud_order_score($order_id){
 }
 
 /**
+ * Adds the result of shipping and billing address
+ * @param $order_id
+ * @return this returns the addition of the billing and shipping scores
+ */
+function calc_past_address_fraud_score($order_id){
+  return calc_past_billing_fraud_score($order_id) + calc_past_shipping_fraud_score($order_id);
+}
+
+/**
+ * Database path:
+ *   fraud_table -> oid
+ *   commerce_order -> oid, rev_id
+ *   field_data_commerce_customer_billing -> rev_id, billing_prof
+ *   field_data_commerce_customer_address -> entity_id (rev_id^)+ bundle
+ * @param $order_id
+ */
+function calc_past_billing_fraud_score($order_id){
+
+}
+
+function calc_past_shipping_fraud_score($order_id){
+
+}
+
+/**
  * Finds all credit cards involved with a fraudulent order
  * @todo find the non-example payment payment type
  * @param $order_id
