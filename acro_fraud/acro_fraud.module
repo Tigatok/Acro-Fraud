@@ -144,8 +144,6 @@ function acro_fraud_entity_view($entity, $entity_type, $view_mode, $langcode) {
   if ($entity_type == 'commerce_order' && in_array($view_mode, array('administrator', 'backoffice'))) {
     dpm($entity, "entity fack");
 
-    drupal_add_css(drupal_get_path('module', 'acro_fraud') . '/css/exposed_filter.css', array('group' => CSS_DEFAULT, 'every_page' => FALSE));
-
     $markup = '<div class="field commerce-backoffice-order-reason">';
     $markup .= '<div class="commerce-backoffice-order-reason-label">' . t('Risk Score Breakdown') . '</div>';
     $markup .= views_embed_view('order_risk', 'block_1', $entity->order_number);
