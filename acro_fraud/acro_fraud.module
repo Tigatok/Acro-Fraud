@@ -142,7 +142,6 @@ function  acro_fraud_uninstall() {
  */
 function acro_fraud_entity_view($entity, $entity_type, $view_mode, $langcode) {
   if ($entity_type == 'commerce_order' && in_array($view_mode, array('administrator', 'backoffice'))) {
-    dpm($entity, "entity fack");
 
     $markup = '<div class="field commerce-backoffice-order-reason">';
     $markup .= '<div class="commerce-backoffice-order-reason-label">' . t('Risk Score Breakdown') . '</div>';
@@ -600,7 +599,6 @@ function acro_fraud_views_data(){
           'field' => 'order_id',
       ),
   );
-
 
   // Order ID table field.
   $data['commerce_order_risk']['order_id'] = array(
