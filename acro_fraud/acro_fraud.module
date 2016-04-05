@@ -577,13 +577,6 @@ function acro_fraud_views_api() {
 }
 
 /**
- * Implements hook_views_default_views().
- */
-function acro_fraud_views_default_views() {
-
-}
-
-/**
  * Implements hook_views_data()
  */
 function acro_fraud_views_data(){
