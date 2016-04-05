@@ -148,7 +148,7 @@ function acro_fraud_entity_view($entity, $entity_type, $view_mode, $langcode) {
 
     $markup = '<div class="field commerce-backoffice-order-reason">';
     $markup .= '<div class="commerce-backoffice-order-reason-label">' . t('Risk Score Breakdown') . '</div>';
-    $markup .= views_embed_view('order_risk', 'default', $entity->order_number);
+    $markup .= views_embed_view('order_risk', 'block_1', $entity->order_number);
     $markup .= '</div>';
 
     $entity->content['reason_status'] = [
@@ -582,7 +582,6 @@ function acro_fraud_views_api() {
  * Implements hook_views_default_views().
  */
 function acro_fraud_views_default_views() {
-
   $view = new view();
   $view->name = 'order_risk';
   $view->description = 'Displays the risk score of orders';
@@ -883,8 +882,27 @@ function acro_fraud_views_default_views() {
   $handler->display->display_options['tab_options']['weight'] = '';
   $handler->display->display_options['tab_options']['name'] = 'management';
 
-  $views[$view->name] = $view;
-  return $views;
+  /* Display: Block */
+  $handler = $view->new_display('block', 'Block', 'block_1');
+  $handler->display->display_options['defaults']['fields'] = FALSE;
+  /* Field: Commerce Order: Order number */
+  $handler->display->display_options['fields']['order_number']['id'] = 'order_number';
+  $handler->display->display_options['fields']['order_number']['table'] = 'commerce_order';
+  $handler->display->display_options['fields']['order_number']['field'] = 'order_number';
+  $handler->display->display_options['fields']['order_number']['label'] = 'ID';
+  $handler->display->display_options['fields']['order_number']['link_to_order'] = 'admin';
+  /* Field: Order Risk: Risk Score */
+  $handler->display->display_options['fields']['risk_score']['id'] = 'risk_score';
+  $handler->display->display_options['fields']['risk_score']['table'] = 'commerce_order_risk';
+  $handler->display->display_options['fields']['risk_score']['field'] = 'risk_score';
+  /* Field: Order Risk: Reason */
+  $handler->display->display_options['fields']['reason']['id'] = 'reason';
+  $handler->display->display_options['fields']['reason']['table'] = 'commerce_order_risk';
+  $handler->display->display_options['fields']['reason']['field'] = 'reason';
+  $handler->display->display_options['defaults']['filter_groups'] = FALSE;
+  $handler->display->display_options['defaults']['filters'] = FALSE;
+  $handler->display->display_options['block_description'] = 'Risk Small Block';
+
 }
 
 /**
