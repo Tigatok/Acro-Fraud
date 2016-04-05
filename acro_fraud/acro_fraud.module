@@ -136,6 +136,29 @@ function acro_fraud_form($form, &$form_state){
 function  acro_fraud_uninstall() {
 
 }
+
+/**
+ * Implements hook_entity_view().
+ */
+function acro_fraud_entity_view($entity, $entity_type, $view_mode, $langcode) {
+  if ($entity_type == 'commerce_order' && in_array($view_mode, array('administrator', 'backoffice'))) {
+    dpm($entity, "entity fack");
+
+    drupal_add_css(drupal_get_path('module', 'acro_fraud') . '/css/exposed_filter.css', array('group' => CSS_DEFAULT, 'every_page' => FALSE));
+
+    $markup = '<div class="field commerce-backoffice-order-reason">';
+    $markup .= '<div class="commerce-backoffice-order-reason-label">' . t('Risk Score Breakdown') . '</div>';
+    $markup .= views_embed_view('order_risk', 'default', $entity->order_number);
+    $markup .= '</div>';
+
+    $entity->content['reason_status'] = [
+      '#weight' => 12,
+      '#markup' => $markup,
+      '#access' => commerce_order_access('view', $entity),
+    ];
+  }
+}
+
 function acro_fraud_enable() {
   if (db_table_exists('commerce_order_risk') == FALSE AND
       db_table_exists('commerce_order_fraud') == FALSE) {
@@ -188,9 +211,9 @@ function acro_fraud_insert_reason($order_id, $score, $reason) {
       'reason' => $reason,
   ];
   // Check if the record exists and update or insert it as appropriate
-  $exists = db_query('SELECT 1 from commerce_order_risk WHERE order_id = :oid AND reason = :r',
+  $exists = db_query('SELECT * from commerce_order_risk WHERE order_id = :oid AND reason = :r',
       array(':oid' => $order_id, ':r' => $reason))->fetchField();
-  if (!$exists && $score > 0) {
+  if (!($exists >= 0) && $score > 0) {
     drupal_write_record('commerce_order_risk', $record);
   }
   else {
