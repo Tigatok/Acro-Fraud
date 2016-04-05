@@ -142,7 +142,6 @@ function  acro_fraud_uninstall() {
  */
 function acro_fraud_entity_view($entity, $entity_type, $view_mode, $langcode) {
   if ($entity_type == 'commerce_order' && in_array($view_mode, array('administrator', 'backoffice'))) {
-
     $markup = '<div class="field commerce-backoffice-order-reason">';
     $markup .= '<div class="commerce-backoffice-order-reason-label">' . t('Risk Score Breakdown') . '</div>';
     $markup .= views_embed_view('order_risk', 'block_1', $entity->order_number);
@@ -271,16 +270,18 @@ function calc_risk_score($order_id, $storing) {
   //Past customer fraud score adds another set of $partial_score
   //and cannot be lower than $PAST_FRAUD_FACTOR
   $past_fraud_match_factor = calc_past_fraud_order_score($order_id) * $partial_score;
-  if ($past_fraud_match_factor)
+  if ($past_fraud_match_factor) {
     $past_fraud_match_factor = $past_fraud_match_factor < $MIN_PAST_FRAUD_FACTOR ? $MIN_PAST_FRAUD_FACTOR : $past_fraud_match_factor;
+  }
 
   //Calculate past credit card fraud
   //Past credit card fraud score will add another set of $partial_score
   //and cannot be lower than $PAST_FRAUD_FACTOR
   $past_fraud_credit_card_number_factor = calc_past_cc_fraud_score($order_id) * $partial_score;
-  if ($past_fraud_credit_card_number_factor)
+  if ($past_fraud_credit_card_number_factor) {
     $past_fraud_credit_card_number_factor =
         $past_fraud_credit_card_number_factor < $MIN_PAST_FRAUD_FACTOR ? $MIN_PAST_FRAUD_FACTOR : $past_fraud_credit_card_number_factor;
+  }
 
   if ($storing) {
       acro_fraud_insert_reason($order_id, $price_s, 'price');
@@ -562,7 +563,7 @@ function calc_past_cc_fraud_score($order_id){
     }
     return $match_factor;
   }
-
+  return $match_factor;
 }
 
 /**
