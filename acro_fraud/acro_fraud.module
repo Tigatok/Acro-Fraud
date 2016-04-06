@@ -185,8 +185,6 @@ function acro_fraud_submit($form, &$form_state){
     }
   }
 }
-
-}
 /**
  * Constants which are the defaults for the minimum values
  * for an element to be considered risky.
