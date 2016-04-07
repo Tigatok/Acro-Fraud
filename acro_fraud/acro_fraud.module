@@ -143,13 +143,25 @@ function  acro_fraud_uninstall() {
 function acro_fraud_entity_view($entity, $entity_type, $view_mode, $langcode) {
   if ($entity_type == 'commerce_order' && in_array($view_mode, array('administrator', 'backoffice'))) {
 
+    // Grab the 'Fraud Detection' form which contains all the orders and their scores
+    $orders_form = acro_fraud_form()[$entity->order_number]['submissions'];
+    //dpm($orders_form, '$orders_form');
     $markup = '<div class="field commerce-backoffice-order-reason">';
-    $markup .= '<div class="commerce-backoffice-order-reason-label">' . t('Risk Score Breakdown') . '</div>';
-    $markup .= views_embed_view('order_risk', 'block_1', $entity->order_number);
-    $markup .= '</div>';
-
+    if (isset($orders_form['#options'])) {
+      $markup .= '<div class="commerce-backoffice-order-reason-label">' . t('Risk Score Breakdown') . '</div>';
+      //$markup .= views_embed_view('commerce_order_risk', 'block_1', $entity->order_number);
+      $markup .= '<table><tr><th>Reason</th><th>Score</th></tr>';
+      foreach ($orders_form['#options'] as $options) {
+        $markup .= '<tr><td>' . $options['reason'] . '</td><td>' . $options['fraud_score'] . '</td></tr>';
+      }
+      $markup .= '</table>';
+      $markup .= '</div>';
+    }
+    else {
+      $markup .= '<div class="commerce-backoffice-order-reason-label">' . t('No Risk Score Associated With This Order') . '</div>';
+    }
     $entity->content['reason_status'] = [
-      '#weight' => 12,
+      '#weight' => 10,
       '#markup' => $markup,
       '#access' => commerce_order_access('view', $entity),
     ];
@@ -312,7 +324,6 @@ function acro_fraud_system_settings_form($form) {
   if (!isset($form['#theme'])) {
     $form['#theme'] = 'system_settings_form';
   }
-  calc_risk_score(5, true);
   recalc_all_scores();
   return $form;
 }
@@ -643,7 +654,7 @@ function acro_fraud_commerce_order_update($order){
 function updateOrInsertCommerceRiskScore($order){
   $record = [
     'order_id'=>$order->order_id,
-    'risk_score'=>calc_risk_score($order->order_id),
+    'risk_score'=>calc_risk_score($order->order_id, TRUE),
   ];
   //@Todo refactor to db_select query
   $exists = db_query('SELECT * FROM commerce_order_risk WHERE order_id=:oid',
