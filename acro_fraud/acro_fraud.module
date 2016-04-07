@@ -86,7 +86,7 @@ function acro_fraud_form($form, &$form_state){
   // for that.
   foreach($orders as $order) {
 
-      calc_risk_score($order->order_id, true);
+    calc_risk_score($order->order_id, true);
     $total_score = get_total_score($order->order_id);
     if($total_score > 0) { // Only display order if it has a score
 
@@ -121,7 +121,6 @@ function acro_fraud_form($form, &$form_state){
       );
     }
   }
-
 
   $form['submit'] = array(
     '#type' => 'submit',
@@ -560,8 +559,10 @@ function calc_past_billing_fraud_score($order_id){
   $result = db_select('commerce_order_fraud', 'cof')
       ->fields('cof', array('order_id'))
       ->execute()
-      ->fetchAssoc();
-  dpm($result);
+      ->fetchAllAssoc('order_id');
+  foreach($result as $order){
+    dpm($order);
+  }
 }
 
 function calc_past_shipping_fraud_score($order_id){
