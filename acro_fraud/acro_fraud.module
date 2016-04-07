@@ -143,28 +143,33 @@ function  acro_fraud_uninstall() {
 function acro_fraud_entity_view($entity, $entity_type, $view_mode, $langcode) {
   if ($entity_type == 'commerce_order' && in_array($view_mode, array('administrator', 'backoffice'))) {
 
-    // Grab the 'Fraud Detection' form which contains all the orders and their scores
-    $orders_form = acro_fraud_form()[$entity->order_number]['submissions'];
-    //dpm($orders_form, '$orders_form');
-    $markup = '<div class="field commerce-backoffice-order-reason">';
-    if (isset($orders_form['#options'])) {
-      $markup .= '<div class="commerce-backoffice-order-reason-label">' . t('Risk Score Breakdown') . '</div>';
-      //$markup .= views_embed_view('commerce_order_risk', 'block_1', $entity->order_number);
-      $markup .= '<table><tr><th>Reason</th><th>Score</th></tr>';
-      foreach ($orders_form['#options'] as $options) {
-        $markup .= '<tr><td>' . $options['reason'] . '</td><td>' . $options['fraud_score'] . '</td></tr>';
+    if (isset($entity->order_number)) {
+
+      calc_risk_score($entity->order_number, TRUE);
+
+      // Grab the 'Fraud Detection' form which contains all the orders and their scores
+      @$orders_form = acro_fraud_form(NULL, $NULL)[$entity->order_number]['submissions'];
+
+      $markup = '<div class="field commerce-backoffice-order-reason">';
+
+      if (isset($orders_form['#options'])) {
+        $markup .= '<div class="commerce-backoffice-order-reason-label">' . t('Risk Score Breakdown') . '</div>';
+        //$markup .= views_embed_view('commerce_order_risk', 'block_1', $entity->order_number);
+        $markup .= '<table><tr><th>Reason</th><th>Score</th></tr>';
+        foreach ($orders_form['#options'] as $options) {
+          $markup .= '<tr><td>' . $options['reason'] . '</td><td>' . $options['fraud_score'] . '</td></tr>';
+        }
+        $markup .= '</table>';
+        $markup .= '</div>';
+      } else {
+        $markup .= '<div class="commerce-backoffice-order-reason-label">' . t('No Risk Score Associated With This Order') . '</div>';
       }
-      $markup .= '</table>';
-      $markup .= '</div>';
+      $entity->content['reason_status'] = [
+          '#weight' => 10,
+          '#markup' => $markup,
+          '#access' => commerce_order_access('view', $entity),
+      ];
     }
-    else {
-      $markup .= '<div class="commerce-backoffice-order-reason-label">' . t('No Risk Score Associated With This Order') . '</div>';
-    }
-    $entity->content['reason_status'] = [
-      '#weight' => 10,
-      '#markup' => $markup,
-      '#access' => commerce_order_access('view', $entity),
-    ];
   }
 }
 
@@ -220,9 +225,9 @@ function acro_fraud_insert_reason($order_id, $score, $reason) {
       'reason' => $reason,
   ];
   // Check if the record exists and update or insert it as appropriate
-  $exists = db_query('SELECT * from commerce_order_risk WHERE order_id = :oid AND reason = :r',
+  $exists = db_query('SELECT 1 from commerce_order_risk WHERE order_id = :oid AND reason = :r',
       array(':oid' => $order_id, ':r' => $reason))->fetchField();
-  if (!($exists >= 0) && $score > 0) {
+  if ($exists != 1 && $score > 0) {
     drupal_write_record('commerce_order_risk', $record);
   }
   else {
