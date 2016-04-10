@@ -124,9 +124,9 @@ function acro_fraud_form($form, &$form_state){
 
 
   $form['submit'] = array(
-    '#type' => 'submit',
-    '#value'=>'Mark as Fraud',
-    '#submit'=>array('acro_fraud_submit'),
+    //'#type' => 'submit',
+    //'#value'=>'Mark as Fraud',
+    //'#submit'=>array('acro_fraud_submit'),
   );
   return $form;
 }
@@ -410,19 +410,18 @@ function calc_price_risk($order_id) {
  * of a PO Box address.
  */
 function calc_po_box_risk($order_id) {
-  $weight = variable_get('po_box', 10);
-  // Check to see if the order is going to be sent to a PO Box
-  $shipping_address = db_query('SELECT commerce_customer_address_thoroughfare
+  $query = 'SELECT commerce_customer_address_thoroughfare
    from (select commerce_customer_address_thoroughfare, cs.entity_id
          from field_data_commerce_customer_shipping cs, field_data_commerce_customer_address ca
          where ca.entity_id = cs.commerce_customer_shipping_profile_id) c
-   where c.entity_id = :oid',
+   where c.entity_id = :oid';
+  $weight = variable_get('po_box', 10);
+  // Check to see if the order is going to be sent to a PO Box
+  $shipping_address = db_query($query,
       array(':oid' => $order_id))->fetchField();
 
   if (!preg_match('/[PO.]*\s?B(ox)?.*\d+/i', $shipping_address))
     $weight = 0;
-
-
 
   return $weight;
 }
