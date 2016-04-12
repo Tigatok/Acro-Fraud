@@ -123,11 +123,11 @@ function acro_fraud_form($form, &$form_state){
   }
 
 
-  $form['submit'] = array(
-    '#type' => 'submit',
-    '#value'=>'Mark as Fraud',
-    '#submit'=>array('acro_fraud_submit'),
-  );
+//  $form['submit'] = array(
+//    '#type' => 'submit',
+//    '#value'=>'Mark as Fraud',
+//    '#submit'=>array('acro_fraud_submit'),
+//  );
   return $form;
 }
 /**
@@ -140,19 +140,51 @@ function  acro_fraud_uninstall() {
 /**
  * Implements hook_entity_view().
  */
+//function acro_fraud_entity_view($entity, $entity_type, $view_mode, $langcode) {
+//  if ($entity_type == 'commerce_order' && in_array($view_mode, array('administrator', 'backoffice'))) {
+//
+//    $markup = '<div class="field commerce-backoffice-order-reason">';
+//    $markup .= '<div class="commerce-backoffice-order-reason-label">' . t('Risk Score Breakdown') . '</div>';
+//    $markup .= views_embed_view('order_risk', 'block_1', $entity->order_number);
+//    $markup .= '</div>';
+//
+//    $entity->content['reason_status'] = [
+//      '#weight' => 12,
+//      '#markup' => $markup,
+//      '#access' => commerce_order_access('view', $entity),
+//    ];
+//  }
+//}
 function acro_fraud_entity_view($entity, $entity_type, $view_mode, $langcode) {
   if ($entity_type == 'commerce_order' && in_array($view_mode, array('administrator', 'backoffice'))) {
 
-    $markup = '<div class="field commerce-backoffice-order-reason">';
-    $markup .= '<div class="commerce-backoffice-order-reason-label">' . t('Risk Score Breakdown') . '</div>';
-    $markup .= views_embed_view('order_risk', 'block_1', $entity->order_number);
-    $markup .= '</div>';
+    if (isset($entity->order_number)) {
 
-    $entity->content['reason_status'] = [
-      '#weight' => 12,
-      '#markup' => $markup,
-      '#access' => commerce_order_access('view', $entity),
-    ];
+      calc_risk_score($entity->order_number, TRUE);
+
+      // Grab the 'Fraud Detection' form which contains all the orders and their scores
+      @$orders_form = acro_fraud_form(NULL, $NULL)[$entity->order_number]['submissions'];
+
+      $markup = '<div class="field commerce-backoffice-order-reason">';
+
+      if (isset($orders_form['#options'])) {
+        $markup .= '<div class="commerce-backoffice-order-reason-label">' . t('Risk Score Breakdown') . '</div>';
+        //$markup .= views_embed_view('commerce_order_risk', 'block_1', $entity->order_number);
+        $markup .= '<table><tr><th>Reason</th><th>Score</th></tr>';
+        foreach ($orders_form['#options'] as $options) {
+          $markup .= '<tr><td>' . $options['reason'] . '</td><td>' . $options['fraud_score'] . '</td></tr>';
+        }
+        $markup .= '</table>';
+        $markup .= '</div>';
+      } else {
+        $markup .= '<div class="commerce-backoffice-order-reason-label">' . t('No Risk Score Associated With This Order') . '</div>';
+      }
+      $entity->content['reason_status'] = [
+          '#weight' => 10,
+          '#markup' => $markup,
+          '#access' => commerce_order_access('view', $entity),
+      ];
+    }
   }
 }
 
@@ -208,16 +240,18 @@ function acro_fraud_insert_reason($order_id, $score, $reason) {
       'reason' => $reason,
   ];
   // Check if the record exists and update or insert it as appropriate
-  $exists = db_query('SELECT * from commerce_order_risk WHERE order_id = :oid AND reason = :r',
+  $exists = db_query('SELECT 1 from commerce_order_risk WHERE order_id = :oid AND reason = :r',
       array(':oid' => $order_id, ':r' => $reason))->fetchField();
-  if (!($exists >= 0) && $score > 0) {
+
+  if ($exists != 1 && $score > 0) {
     drupal_write_record('commerce_order_risk', $record);
   }
   else {
     // If the record already exists update where necessary
     if (get_score_for_reason($order_id, $reason) != $score) {
-      if ($score > 0) // Only store scores greater than zero, delete the rest
-        update_score_for_reason($order_id, $reason, $score);
+      if ($score > 0) {// Only store scores greater than zero, delete the rest
+      update_score_for_reason($order_id, $reason, $score);
+    }
       else
         delete_score_for_reason($order_id, $reason);
     }
@@ -256,7 +290,7 @@ function delete_score_for_reason($order_id, $reason) {
  * Each delegated function is responsible for storing the score it generated
  * with the associated reason in the risk table.
  */
-function calc_risk_score($order_id, $storing = false) {
+function calc_risk_score($order_id, $storing = TRUE) {
   //@Todo Determine best minimum for past fraud cc and past fraud customer
   $MIN_PAST_FRAUD_FACTOR = 8;
   $price_s = calc_price_risk($order_id);
@@ -991,7 +1025,6 @@ function calc_past_cc_fraud_score($order_id){
         ->execute()
         ->fetchAssoc();
     if($result != null){
-    dpm($result, "res");
     foreach($result as $order_id){
       //loads the commerce order from the id
       $commerce_order = commerce_order_load($order_id);
@@ -1035,118 +1068,118 @@ function acro_fraud_views_api() {
   );
 }
 
-/**
- * Implements hook_views_data()
- */
-function acro_fraud_views_data(){
-  $data['commerce_order_risk']['table']['group'] = t('Order Risk');
-
-  // Define the base table
-  $data['commerce_order_risk']['table']['base'] = array(
-      'field' => 'order_id', // This is the identifier field for the view.
-      'title' => t('Order Risk'),
-      'help' => t('Contains information about an orders risk.'),
-      'weight' => -10,
-  );
-
-  // Join on commerce_order
-  $data['commerce_order_risk']['table']['join'] = array(
-    // Index this array by the table name to which this table refers.
-    // 'left_field' is the primary key in the referenced table.
-    // 'field' is the foreign key in this table.
-      'commerce_order' => array(
-          'left_field' => 'order_id',
-          'field' => 'order_id',
-      ),
-  );
-
-  // Order ID table field.
-  $data['commerce_order_risk']['order_id'] = array(
-      'title' => t('Order ID'),
-      'help' => t('The ID of an Order'),
-    // Define a relationship
-      'relationship' => array(
-          'base' => 'commerce_order', // The name of the table to join with.
-          'base field' => 'order_id', // The name of the field on the joined table.
-          'handler' => 'views_handler_relationship',
-          'label' => t('Order risk'),
-          'title' => t('Link orders to risk'),
-          'help' => t('Links the orders to their risk'),
-      ),
-  );
-
-  $data['commerce_order_risk']['reason'] = array(
-      'title' => t('Reason'),
-      'help' => t('The reason that determines the risk score'),
-      'field' => array(
-          'handler' => 'views_handler_field',
-          'click sortable' => TRUE, // This is use by the table display plugin.
-      ),
-      'sort' => array(
-          'handler' => 'views_handler_sort',
-      ),
-      'filter' => array(
-          'handler' => 'views_handler_filter_string',
-      ),
-      'argument' => array(
-          'handler' => 'views_handler_argument_string',
-      ),
-  );
-
-  $data['commerce_order_risk']['risk_score'] = array(
-      'title' => t('Risk Score'),
-      'help' => t('The risk associated with the order.'),
-      'field' => array(
-          'handler' => 'views_handler_field_numeric',
-          'click sortable' => TRUE,
-      ),
-      'filter' => array(
-          'handler' => 'views_handler_filter_numeric',
-      ),
-      'sort' => array(
-          'handler' => 'views_handler_sort',
-      ),
-  );
-
-  $data['commerce_order_fraud']['table']['group'] = t('Order Fraud');
-
-  // Define the base table
-  $data['commerce_order_fraud']['table']['base'] = array(
-    'field' => 'order_id', // This is the identifier field for the view.
-    'title' => t('Order Fraud'),
-    'help' => t('Contains fraudulent orders.'),
-    'weight' => -10,
-  );
-
-  // Join on commerce_order
-  $data['commerce_order_fraud']['table']['join'] = array(
-    // Index this array by the table name to which this table refers.
-    // 'left_field' is the primary key in the referenced table.
-    // 'field' is the foreign key in this table.
-    'commerce_order' => array(
-      'left_field' => 'order_id',
-      'field' => 'order_id',
-    ),
-  );
-
-
-  // Order ID table field.
-  $data['commerce_order_fraud']['order_id'] = array(
-    'title' => t('Order ID'),
-    'help' => t('The ID of an Order'),
-    // Define a relationship
-    'relationship' => array(
-      'base' => 'commerce_order', // The name of the table to join with.
-      'base field' => 'order_id', // The name of the field on the joined table.
-      'handler' => 'views_handler_relationship',
-      'label' => t('Fraudulent orders'),
-      'title' => t('Fraudulent Orders'),
-      'help' => t('Shows orders that have been marked fraudulent'),
-    ),
-  );
-
-  return $data;
-}
+///**
+// * Implements hook_views_data()
+// */
+//function acro_fraud_views_data(){
+//  $data['commerce_order_risk']['table']['group'] = t('Order Risk');
+//
+//  // Define the base table
+//  $data['commerce_order_risk']['table']['base'] = array(
+//      'field' => 'order_id', // This is the identifier field for the view.
+//      'title' => t('Order Risk'),
+//      'help' => t('Contains information about an orders risk.'),
+//      'weight' => -10,
+//  );
+//
+//  // Join on commerce_order
+//  $data['commerce_order_risk']['table']['join'] = array(
+//    // Index this array by the table name to which this table refers.
+//    // 'left_field' is the primary key in the referenced table.
+//    // 'field' is the foreign key in this table.
+//      'commerce_order' => array(
+//          'left_field' => 'order_id',
+//          'field' => 'order_id',
+//      ),
+//  );
+//
+//  // Order ID table field.
+//  $data['commerce_order_risk']['order_id'] = array(
+//      'title' => t('Order ID'),
+//      'help' => t('The ID of an Order'),
+//    // Define a relationship
+//      'relationship' => array(
+//          'base' => 'commerce_order', // The name of the table to join with.
+//          'base field' => 'order_id', // The name of the field on the joined table.
+//          'handler' => 'views_handler_relationship',
+//          'label' => t('Order risk'),
+//          'title' => t('Link orders to risk'),
+//          'help' => t('Links the orders to their risk'),
+//      ),
+//  );
+//
+//  $data['commerce_order_risk']['reason'] = array(
+//      'title' => t('Reason'),
+//      'help' => t('The reason that determines the risk score'),
+//      'field' => array(
+//          'handler' => 'views_handler_field',
+//          'click sortable' => TRUE, // This is use by the table display plugin.
+//      ),
+//      'sort' => array(
+//          'handler' => 'views_handler_sort',
+//      ),
+//      'filter' => array(
+//          'handler' => 'views_handler_filter_string',
+//      ),
+//      'argument' => array(
+//          'handler' => 'views_handler_argument_string',
+//      ),
+//  );
+//
+//  $data['commerce_order_risk']['risk_score'] = array(
+//      'title' => t('Risk Score'),
+//      'help' => t('The risk associated with the order.'),
+//      'field' => array(
+//          'handler' => 'views_handler_field_numeric',
+//          'click sortable' => TRUE,
+//      ),
+//      'filter' => array(
+//          'handler' => 'views_handler_filter_numeric',
+//      ),
+//      'sort' => array(
+//          'handler' => 'views_handler_sort',
+//      ),
+//  );
+//
+//  $data['commerce_order_fraud']['table']['group'] = t('Order Fraud');
+//
+//  // Define the base table
+//  $data['commerce_order_fraud']['table']['base'] = array(
+//    'field' => 'order_id', // This is the identifier field for the view.
+//    'title' => t('Order Fraud'),
+//    'help' => t('Contains fraudulent orders.'),
+//    'weight' => -10,
+//  );
+//
+//  // Join on commerce_order
+//  $data['commerce_order_fraud']['table']['join'] = array(
+//    // Index this array by the table name to which this table refers.
+//    // 'left_field' is the primary key in the referenced table.
+//    // 'field' is the foreign key in this table.
+//    'commerce_order' => array(
+//      'left_field' => 'order_id',
+//      'field' => 'order_id',
+//    ),
+//  );
+//
+//
+//  // Order ID table field.
+//  $data['commerce_order_fraud']['order_id'] = array(
+//    'title' => t('Order ID'),
+//    'help' => t('The ID of an Order'),
+//    // Define a relationship
+//    'relationship' => array(
+//      'base' => 'commerce_order', // The name of the table to join with.
+//      'base field' => 'order_id', // The name of the field on the joined table.
+//      'handler' => 'views_handler_relationship',
+//      'label' => t('Fraudulent orders'),
+//      'title' => t('Fraudulent Orders'),
+//      'help' => t('Shows orders that have been marked fraudulent'),
+//    ),
+//  );
+//
+//  return $data;
+//}
 
 /**
  * Implements hook_views_pre_view().
@@ -1247,7 +1280,7 @@ function acro_fraud_commerce_order_update($order){
 function updateOrInsertCommerceRiskScore($order){
   $record = [
     'order_id'=>$order->order_id,
-    'risk_score'=>calc_risk_score($order->order_id),
+    'risk_score'=>calc_risk_score($order->order_id, TRUE),
   ];
   //@Todo refactor to db_select query
   $exists = db_query('SELECT * FROM commerce_order_risk WHERE order_id=:oid',
