@@ -142,6 +142,7 @@ function  acro_fraud_uninstall() {
  */
 function acro_fraud_entity_view($entity, $entity_type, $view_mode, $langcode) {
   if ($entity_type == 'commerce_order' && in_array($view_mode, array('administrator', 'backoffice'))) {
+
     $markup = '<div class="field commerce-backoffice-order-reason">';
     $markup .= '<div class="commerce-backoffice-order-reason-label">' . t('Risk Score Breakdown') . '</div>';
     $markup .= views_embed_view('order_risk', 'block_1', $entity->order_number);
@@ -161,7 +162,6 @@ function acro_fraud_enable() {
     drupal_install_schema('acro_fraud');
   }
 }
-
 /**
  * Implements hook_submit().
  *
@@ -179,8 +179,8 @@ function acro_fraud_submit($form, &$form_state){
       }
     }
   }
-}
 
+}
 /**
  * Constants which are the defaults for the minimum values
  * for an element to be considered risky.
@@ -759,6 +759,7 @@ function calc_multi_item_risk($order_id) {
     $wrapper = entity_metadata_wrapper('commerce_order', $order);
     $line_items = $wrapper->commerce_line_items;
     $quantity = commerce_line_items_quantity($line_items, commerce_product_line_item_types());
+  }
   $score = $quantity - $max_items;
   if ($score < 1)
     return 0;
@@ -1028,7 +1029,7 @@ function calc_past_cc_fraud_score($order_id){
 function acro_fraud_views_api() {
   return array(
     'api' => 3.0,
-    'path' => drupal_get_path('module', 'acro_fraud').'/includes/view',
+    'path' => drupal_get_path('module', 'acro_fraud').'/includes/views',
   );
 }
 
