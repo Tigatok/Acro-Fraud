@@ -895,11 +895,9 @@ function calc_past_address_fraud_score($order_id){
           ->execute()
           ->fetchAllAssoc('order_id');
 
-      dpm($order_id, "loop for: ");
       //We want to check to see if any of the address information has been fraudulent in the past
       foreach ($address_array as $key => $address_piece) {
         if ($address_piece != '') {
-          dpm($key . '=> ' . $address_piece, "address info: ");
 
           //Query all fraudulent orders' address information to see if
           //any of the $address_piece are the same
@@ -942,7 +940,6 @@ function calc_past_address_fraud_score($order_id){
             $match_factor += 2;
           }
         }
-        dpm($match_factor, "Match Factor");
         return $match_factor;
       }
     }
