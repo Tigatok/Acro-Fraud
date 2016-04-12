@@ -744,6 +744,8 @@ function acro_fraud_views_default_views() {
   $handler->display->display_options['defaults']['filters'] = FALSE;
   $handler->display->display_options['block_description'] = 'Risk Small Block';
 
+  $views[$view->name] = $view;
+  return $views;
 }
 
 
@@ -765,9 +767,6 @@ function calc_multi_item_risk($order_id) {
     return 0;
 
   return $score * 3;
-  } else {
-    return 0;
-  }
 }
 
 function score_needs_update($order_id, $new_score) {
