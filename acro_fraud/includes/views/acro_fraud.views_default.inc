@@ -18,6 +18,7 @@ function acro_fraud_views_default_views_alter(&$views) {
   $handler->display->display_options['css_class'] = 'commerce-backoffice-view';
   $handler->display->display_options['use_ajax'] = TRUE;
   $handler->display->display_options['use_more_always'] = FALSE;
+  $handler->display->display_options['group_by'] = TRUE;
   $handler->display->display_options['access']['type'] = 'perm';
   $handler->display->display_options['access']['perm'] = 'administer commerce_order entities';
   $handler->display->display_options['cache']['type'] = 'none';
@@ -107,10 +108,6 @@ function acro_fraud_views_default_views_alter(&$views) {
   $handler->display->display_options['relationships']['uid']['id'] = 'uid';
   $handler->display->display_options['relationships']['uid']['table'] = 'commerce_order';
   $handler->display->display_options['relationships']['uid']['field'] = 'uid';
-  /* Relationship: Order Risk: Link orders to risk */
-  $handler->display->display_options['relationships']['order_id']['id'] = 'order_id';
-  $handler->display->display_options['relationships']['order_id']['table'] = 'commerce_order_risk';
-  $handler->display->display_options['relationships']['order_id']['field'] = 'order_id';
   /* Field: Bulk operations: Commerce Order */
   $handler->display->display_options['fields']['views_bulk_operations']['id'] = 'views_bulk_operations';
   $handler->display->display_options['fields']['views_bulk_operations']['table'] = 'commerce_order';
@@ -248,16 +245,18 @@ function acro_fraud_views_default_views_alter(&$views) {
   $handler->display->display_options['fields']['commerce_order_total']['settings'] = array(
     'calculation' => FALSE,
   );
+  $handler->display->display_options['fields']['commerce_order_total']['group_column'] = 'entity_id';
   /* Field: Commerce Order: Order status */
   $handler->display->display_options['fields']['status']['id'] = 'status';
   $handler->display->display_options['fields']['status']['table'] = 'commerce_order';
   $handler->display->display_options['fields']['status']['field'] = 'status';
   $handler->display->display_options['fields']['status']['label'] = 'Status';
-  /* Field: Order Risk: Risk Score */
+  /* Field: SUM(Order Risk: Risk Score) */
   $handler->display->display_options['fields']['risk_score']['id'] = 'risk_score';
   $handler->display->display_options['fields']['risk_score']['table'] = 'commerce_order_risk';
   $handler->display->display_options['fields']['risk_score']['field'] = 'risk_score';
   $handler->display->display_options['fields']['risk_score']['relationship'] = 'order_id';
+  $handler->display->display_options['fields']['risk_score']['group_type'] = 'sum';
   /* Field: Commerce Order: Operations links (Dropbutton) */
   $handler->display->display_options['fields']['operations_dropbutton']['id'] = 'operations_dropbutton';
   $handler->display->display_options['fields']['operations_dropbutton']['table'] = 'views_entity_commerce_order';
@@ -329,6 +328,7 @@ function acro_fraud_views_default_views_alter(&$views) {
   $handler->display->display_options['tab_options']['description'] = 'Manage orders in the store.';
   $handler->display->display_options['tab_options']['weight'] = '';
   $handler->display->display_options['tab_options']['name'] = 'management';
+
 
   $views[$view->name] = $view;
 
