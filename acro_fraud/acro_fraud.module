@@ -254,7 +254,7 @@ function delete_score_for_reason($order_id, $reason) {
  * Each delegated function is responsible for storing the score it generated
  * with the associated reason in the risk table.
  */
-function calc_risk_score($order_id, $storing) {
+function calc_risk_score($order_id, $storing = false) {
   //@Todo Determine best minimum for past fraud cc and past fraud customer
   $MIN_PAST_FRAUD_FACTOR = 8;
   $price_s = calc_price_risk($order_id);
