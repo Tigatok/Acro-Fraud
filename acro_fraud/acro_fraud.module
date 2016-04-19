@@ -137,57 +137,6 @@ function  acro_fraud_uninstall() {
 
 }
 
-/**
- * Implements hook_entity_view().
- */
-//function acro_fraud_entity_view($entity, $entity_type, $view_mode, $langcode) {
-//  if ($entity_type == 'commerce_order' && in_array($view_mode, array('administrator', 'backoffice'))) {
-//
-//    $markup = '<div class="field commerce-backoffice-order-reason">';
-//    $markup .= '<div class="commerce-backoffice-order-reason-label">' . t('Risk Score Breakdown') . '</div>';
-//    $markup .= views_embed_view('order_risk', 'block_1', $entity->order_number);
-//    $markup .= '</div>';
-//
-//    $entity->content['reason_status'] = [
-//      '#weight' => 12,
-//      '#markup' => $markup,
-//      '#access' => commerce_order_access('view', $entity),
-//    ];
-//  }
-//}
-function acro_fraud_entity_view($entity, $entity_type, $view_mode, $langcode) {
-  if ($entity_type == 'commerce_order' && in_array($view_mode, array('administrator', 'backoffice'))) {
-
-    if (isset($entity->order_number)) {
-
-      calc_risk_score($entity->order_number, TRUE);
-
-      // Grab the 'Fraud Detection' form which contains all the orders and their scores
-      @$orders_form = acro_fraud_form(NULL, $NULL)[$entity->order_number]['submissions'];
-
-      $markup = '<div class="field commerce-backoffice-order-reason">';
-
-      if (isset($orders_form['#options'])) {
-        $markup .= '<div class="commerce-backoffice-order-reason-label">' . t('Risk Score Breakdown') . '</div>';
-        //$markup .= views_embed_view('commerce_order_risk', 'block_1', $entity->order_number);
-        $markup .= '<table><tr><th>Reason</th><th>Score</th></tr>';
-        foreach ($orders_form['#options'] as $options) {
-          $markup .= '<tr><td>' . $options['reason'] . '</td><td>' . $options['fraud_score'] . '</td></tr>';
-        }
-        $markup .= '</table>';
-        $markup .= '</div>';
-      } else {
-        $markup .= '<div class="commerce-backoffice-order-reason-label">' . t('No Risk Score Associated With This Order') . '</div>';
-      }
-      $entity->content['reason_status'] = [
-          '#weight' => 10,
-          '#markup' => $markup,
-          '#access' => commerce_order_access('view', $entity),
-      ];
-    }
-  }
-}
-
 function acro_fraud_enable() {
   if (db_table_exists('commerce_order_risk') == FALSE AND
       db_table_exists('commerce_order_fraud') == FALSE) {
