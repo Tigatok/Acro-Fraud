@@ -332,5 +332,82 @@ function acro_fraud_views_default_views_alter(&$views) {
 
   $views[$view->name] = $view;
 
+  $view = new view();
+  $view->name = 'commerce_order_risk';
+  $view->description = 'Displays the risks associated with an order';
+  $view->tag = 'default';
+  $view->base_table = 'commerce_order_risk';
+  $view->human_name = 'Commerce Order Risk';
+  $view->core = 7;
+  $view->api_version = '3.0';
+  $view->disabled = FALSE; /* Edit this to true to make a default view disabled initially */
+
+  /* Display: Master */
+  $handler = $view->new_display('default', 'Master', 'default');
+  $handler->display->display_options['title'] = 'Commerce Order Risk';
+  $handler->display->display_options['use_more_always'] = FALSE;
+  $handler->display->display_options['access']['type'] = 'none';
+  $handler->display->display_options['cache']['type'] = 'none';
+  $handler->display->display_options['query']['type'] = 'views_query';
+  $handler->display->display_options['exposed_form']['type'] = 'basic';
+  $handler->display->display_options['pager']['type'] = 'full';
+  $handler->display->display_options['pager']['options']['items_per_page'] = '10';
+  $handler->display->display_options['style_plugin'] = 'table';
+  $handler->display->display_options['style_options']['columns'] = array(
+    'reason' => 'reason',
+    'risk_score' => 'risk_score',
+  );
+  $handler->display->display_options['style_options']['default'] = '-1';
+  $handler->display->display_options['style_options']['info'] = array(
+    'reason' => array(
+      'sortable' => 0,
+      'default_sort_order' => 'asc',
+      'align' => '',
+      'separator' => '',
+      'empty_column' => 0,
+    ),
+    'risk_score' => array(
+      'sortable' => 0,
+      'default_sort_order' => 'asc',
+      'align' => '',
+      'separator' => '',
+      'empty_column' => 0,
+    ),
+  );
+  /* No results behavior: Global: Text area */
+  $handler->display->display_options['empty']['area']['id'] = 'area';
+  $handler->display->display_options['empty']['area']['table'] = 'views';
+  $handler->display->display_options['empty']['area']['field'] = 'area';
+  $handler->display->display_options['empty']['area']['empty'] = TRUE;
+  $handler->display->display_options['empty']['area']['content'] = 'No risks associated with this order.';
+  $handler->display->display_options['empty']['area']['format'] = 'filtered_html';
+  /* Field: Order Risk: Reason */
+  $handler->display->display_options['fields']['reason']['id'] = 'reason';
+  $handler->display->display_options['fields']['reason']['table'] = 'commerce_order_risk';
+  $handler->display->display_options['fields']['reason']['field'] = 'reason';
+  $handler->display->display_options['fields']['reason']['alter']['text'] = '/_/%/';
+  /* Field: Order Risk: Risk Score */
+  $handler->display->display_options['fields']['risk_score']['id'] = 'risk_score';
+  $handler->display->display_options['fields']['risk_score']['table'] = 'commerce_order_risk';
+  $handler->display->display_options['fields']['risk_score']['field'] = 'risk_score';
+  $handler->display->display_options['fields']['risk_score']['alter']['alter_text'] = TRUE;
+  /* Contextual filter: Order Risk: Order ID */
+  $handler->display->display_options['arguments']['order_id']['id'] = 'order_id';
+  $handler->display->display_options['arguments']['order_id']['table'] = 'commerce_order_risk';
+  $handler->display->display_options['arguments']['order_id']['field'] = 'order_id';
+  $handler->display->display_options['arguments']['order_id']['default_argument_type'] = 'fixed';
+  $handler->display->display_options['arguments']['order_id']['summary']['number_of_records'] = '0';
+  $handler->display->display_options['arguments']['order_id']['summary']['format'] = 'default_summary';
+  $handler->display->display_options['arguments']['order_id']['summary_options']['items_per_page'] = '25';
+
+  /* Display: Entity Content */
+  $handler = $view->new_display('entity_view', 'Entity Content', 'entity_content');
+  $handler->display->display_options['entity_type'] = 'commerce_order';
+  $handler->display->display_options['bundles'] = array(
+    0 => 'commerce_order',
+  );
+
+  $views[$view->name] = $view;
+
   return $views;
 }

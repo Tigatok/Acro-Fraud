@@ -29,7 +29,10 @@ function acro_fraud_views_data(){
   $data['commerce_order_risk']['order_id'] = array(
     'title' => t('Order ID'),
     'help' => t('The ID of an Order'),
-    // Define a relationship
+    'field' => array(
+      'handler' => 'commerce_order_handler_field_order',
+      'click sortable' => TRUE,
+    ),
     'relationship' => array(
       'base' => 'commerce_order', // The name of the table to join with.
       'base field' => 'order_id', // The name of the field on the joined table.
@@ -37,6 +40,12 @@ function acro_fraud_views_data(){
       'label' => t('Order risk'),
       'title' => t('Link orders to risk'),
       'help' => t('Links the orders to their risk'),
+    ),
+    'argument' => array(
+      'handler' => 'commerce_order_handler_argument_order_order_id',
+      'name field' => 'order_number',
+      'numeric' => TRUE,
+      'validate type' => 'order_id',
     ),
   );
 
